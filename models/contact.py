@@ -1,6 +1,7 @@
 from bson import ObjectId
 from bson.errors import InvalidId
 from datetime import datetime
+from utils.serializer import serialize_doc
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 
@@ -10,6 +11,7 @@ db = client["pinggenius"]
 contacts = db["contacts"]
 
 
+# -------- Save contact to DB --------
 async def save_contact_to_db(contact_data: dict):
     contact_data["created_at"] = datetime.utcnow()
     contact_data["status"] = "pending"
@@ -17,6 +19,7 @@ async def save_contact_to_db(contact_data: dict):
     await contacts.insert_one(contact_data)
 
 
+# -------- Get contact by ID --------
 async def get_contact_by_id(contact_id: str):
     try:
         object_id = ObjectId(contact_id)
@@ -25,3 +28,9 @@ async def get_contact_by_id(contact_id: str):
 
     contact = await contacts.find_one({"_id": object_id})
     return contact
+
+
+# -------- Get all contacts --------
+async def get_all_contacts():
+    contacts_list = await contacts.find({}).to_list(100)
+    return [serialize_doc(c) for c in contacts_list]
