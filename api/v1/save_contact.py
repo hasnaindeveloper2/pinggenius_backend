@@ -11,6 +11,7 @@ class Contact(BaseModel):
     name: str
     linkedin_url: str
     role: str
+    email: str
     company: str | None = None
     website: str | None = None
     tone: str = "formal"

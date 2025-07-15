@@ -26,7 +26,7 @@ config = RunConfig(model=model, model_provider=provider)
 generator_agent = Agent(
     name="Cold Email Generator",
     instructions="""
-You generate ultra-personalized cold emails based on LinkedIn profile, role, and website.
+You generate ultra-personalized cold emails based on LinkedIn profile, role, and website also include email if provided.
 
 Tone must match the input:
 - Friendly: conversational and warm
@@ -39,9 +39,12 @@ Your output format should be:
 
 ---
 Email 1
+[put email]
 
 ---
 Email 2
+[put email]
+
 """,
 )
 
@@ -53,20 +56,21 @@ def smart_split_variations(output: str) -> list[str]:
 def extract_name_from_linkedin(url: str) -> str:
     # Example: https://linkedin.com/in/muhammad-hasnain
     username = url.strip("/").split("/")[-1]
-    parts = username.replace("-", " ").title().split()# [Muhammad, Hasnain]
+    parts = username.replace("-", " ").title().split()  # [Muhammad, Hasnain]
     return " ".join(parts)
 
 
 async def generate_cold_email(
-    linkedin_url: str, role: str, website: str | None, tone: str
+    linkedin_url: str, role: str, website: str | None, tone: str, email: str
 ) -> list[str]:
     name = extract_name_from_linkedin(linkedin_url)
     input_prompt = f"""
-  Name: {name}
-LinkedIn URL: {linkedin_url}    
+Name: {name}
+LinkedIn URL: {linkedin_url}
 Role: {role}
 Website: {website or 'Not provided'}
 Tone: {tone}
+Email: {email}
 
 Generate 2 cold email variations.
 """

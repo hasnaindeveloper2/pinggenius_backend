@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from api.v1 import analyze_email
 from api.v1 import generate_email
 from api.v1 import save_contact
+from api.v1 import start_sequence
 from gmail_service import fetch_recent_emails, get_gmail_service
 
 
@@ -17,6 +18,7 @@ def read_root():
 app.include_router(analyze_email.router, prefix="/api/v1")
 app.include_router(generate_email.router, prefix="/api/v1")
 app.include_router(save_contact.router, prefix="/api/v1")
+app.include_router(start_sequence.router, prefix="/api/v1")
 
 
 @app.get("/latest-emails")

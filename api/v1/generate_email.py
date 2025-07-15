@@ -8,6 +8,7 @@ router = APIRouter(tags=["Cold Email"])
 class GenerateEmailRequest(BaseModel):
     linkedin_url: str
     role: str
+    email: str
     website: str | None = None
     tone: str = "friendly"
 
@@ -25,6 +26,7 @@ async def generate_email(data: GenerateEmailRequest):
             role=data.role,
             website=data.website,
             tone=data.tone,
+            email=data.email,
         )
         return {
             "variation_1": result[0],
