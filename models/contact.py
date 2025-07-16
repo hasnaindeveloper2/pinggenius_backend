@@ -34,3 +34,11 @@ async def get_contact_by_id(contact_id: str):
 async def get_all_contacts():
     contacts_list = await contacts.find({}).to_list(100)
     return [serialize_doc(c) for c in contacts_list]
+
+# ------- Update the status --------
+async def update_contact_status(contact_id: str, status: str):
+    result = await contacts.update_one(
+        {"_id": ObjectId(contact_id)},
+        {"$set": {"status": status}}
+    )
+    return result.modified_count
