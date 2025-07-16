@@ -13,12 +13,12 @@ SCOPES = [
 
 def generate_new_token():
     flow = InstalledAppFlow.from_client_secrets_file(
-        '.credentials.json', SCOPES
+        'credentials.json', SCOPES
     )
     creds = flow.run_local_server(port=0)
 
     # Save the credentials to token.json
-    with open('.token.json', 'w') as token_file:
+    with open('token.json', 'w') as token_file:
         token_file.write(creds.to_json())
 
     print("✅ New token.json file generated successfully!")

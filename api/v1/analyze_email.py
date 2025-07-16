@@ -19,6 +19,7 @@ class Email(BaseModel):
     id: str
 
 
+set = str
 @router.post("/analyze")
 async def analyze_email(email: Email):
     try:
@@ -47,7 +48,7 @@ async def analyze_email(email: Email):
             to_email = email.sender.split("<")[-1].replace(">", "").strip()
             send_email_reply(service, to_email, email.subject, reply)
             marked_as_read(service, email.id)
-            return {"status": "easy", "reply": reply}
+            return {"status": "easy", "reply": reply, "message":"auto reply sent!✅ email marked as read!"}
 
         else:
             await save_hard_email_to_db(email_dict)

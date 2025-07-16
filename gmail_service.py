@@ -64,7 +64,7 @@ def send_email_reply(service, to_email, subject, message_body):
     """Send an email reply using Gmail API."""
     message = MIMEText(message_body)
     message["to"] = to_email
-    message["subject"] = "Re: " + subject
+    message["subject"] = "Re: " + subject # why Re? because it's a reply to the original email
 
     raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
     body = {"raw": raw_message}
