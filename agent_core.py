@@ -32,6 +32,7 @@ def is_junk(subject: str, body: str) -> bool:
 @function_tool
 def is_easy_response(subject: str, body: str) -> bool:
     keywords = [
+        "projects",
         "status",
         "update",
         "meeting",
@@ -43,6 +44,8 @@ def is_easy_response(subject: str, body: str) -> bool:
         "important",
         "greeting",
         "feedback",
+        "conversation",
+        "talk"
     ]
     return any(word in f"{subject.lower()} {body.lower()}" for word in keywords)
 
