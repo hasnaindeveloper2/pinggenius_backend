@@ -16,6 +16,7 @@ app = FastAPI()
 def read_root():
     return {"message": "PingGenius Email Agent API is running 🚀"}
 
+
 # -------- Routers --------
 app.include_router(analyze_email.router, prefix="/api/v1")
 app.include_router(generate_email.router, prefix="/api/v1")

@@ -101,7 +101,7 @@ You are an email assistant.
 
 1. Call `is_junk(subject, sender, body)` → If True, return 'junk'
 2. Else, call `is_easy_response(subject, body)`
-3. If easy → call `generate_reply(subject, body)` and return: 'easy: <reply>'
+3. If easy → call `generate_reply(subject, body, sender)` and return: 'easy: <reply>'
 4. Else → return 'hard'
 
 Always call tools. Never guess.
@@ -113,4 +113,4 @@ Always call tools. Never guess.
 # Run wrapper
 async def run_email_agent(input_text: str) -> str:
     result = await Runner.run(main_agent, run_config=config, input=input_text)
-    return result.final_output
+    return result.final_output.split("\n")[0]

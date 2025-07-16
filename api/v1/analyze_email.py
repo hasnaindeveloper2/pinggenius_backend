@@ -18,8 +18,6 @@ class Email(BaseModel):
     snippet: str
     id: str
 
-
-set = str
 @router.post("/analyze")
 async def analyze_email(email: Email):
     try:
@@ -29,9 +27,11 @@ async def analyze_email(email: Email):
 
         result = await run_email_agent(input_text)
         decision = result.strip().lower()
+        print("RESULT:", result)
+        print("DECISION:", decision)
 
         service = get_gmail_service()
-
+        
         email_dict = {
             "subject": email.subject,
             "sender": email.sender,
