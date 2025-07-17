@@ -68,6 +68,8 @@ LinkedIn URL: {linkedin_url}
 Role: {role}
 Website: {website or 'Not provided'}
 Tone: {tone}
+always end with Best Regard or Warm Regards,
+{"pinggenius assistant"}
 
 Generate 2 cold email variations.
 """

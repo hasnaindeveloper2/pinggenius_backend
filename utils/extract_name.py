@@ -1,7 +1,8 @@
 import re
 
-def extract_name(email: str) -> str:
-    match = re.search(r"[\w\.-]+@([\w\.-]+)", email)
-    if match:
-        return match.group(1).split('.')[0].capitalize()  # e.g. codewithhasnain → Codewithhasnain
-    return "there"
+
+def extract_name(sender: str) -> str:
+    # e.g. "Hasnain <hasnain@example.com>" → "Hasnain"
+    match = re.match(r"^(.*?)(?:\s*<.*>)?$", sender.strip())
+    name = match.group(1).strip().replace('"', "") if match else "there"
+    return name or "there"

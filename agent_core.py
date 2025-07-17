@@ -3,10 +3,18 @@ from utils.extract_name import extract_name
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 from agents import Agent, OpenAIChatCompletionsModel, RunConfig, Runner, function_tool
+import asyncio
+from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorClient
+import re
 
 # Load environment variables
 load_dotenv()
 gemini_api_key = os.getenv("GEMINI_API_KEY")
+
+client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
+db = client["test"]
+users_collection = db["waitlistsusers"]
 
 # Gemini client setup
 provider = AsyncOpenAI(
@@ -45,7 +53,7 @@ def is_easy_response(subject: str, body: str) -> bool:
         "greeting",
         "feedback",
         "conversation",
-        "talk"
+        "talk",
     ]
     return any(word in f"{subject.lower()} {body.lower()}" for word in keywords)
 
@@ -54,38 +62,48 @@ def is_easy_response(subject: str, body: str) -> bool:
 reply_agent = Agent(
     name="Reply Writer",
     instructions="""
-You write professional replies. Your tone must match the context:
-- Casual → Friendly
-- Business → Formal
-- Funny → witty but professional
-Always include a polite closing.
+You are a professional email replier.
 
-!important
-
-write the name of user using their email address
+- Read the subject AND body carefully.
+- Your reply must be based on the sender's name, subject and body.
+- Match the tone (Casual → Friendly, Business → Formal, Funny → Witty).
+- Greet the person using their name.
+- Always include a closing like:  
+best regards,
 """,
 )
 
 
 @function_tool
-async def generate_reply(subject: str, body: str, sender: str) -> str:
+async def generate_reply(subject: str, body: str, sender: str, id: str) -> str:
+    mongo_id = ObjectId(id)
+    user = await users_collection.find_one({"_id": mongo_id})
+    your_name = (
+        user["username"] if user and "username" in user else "PingGenius Assistant"
+    )
+
+    # extarct the name remove extra numbers from your_name and add space like "Hasnain siddique"
+    your_name = re.sub(r"\d+", " ", your_name).strip()
+
     name = extract_name(sender)
 
-    prompt = f"""
-    You are an ultra-personalized email reply assistant.
+    body = body.strip() if body else "No body content provided."
+    print("body is presents", body)
 
-    From: {name}
-    Subject: {subject}
-    Body: {body}
+    prompt = f"""You are an ultra-personalized email reply assistant.
+    
+Email Details:
+- From: {name}
+- Subject: {subject}
+- Body: {body}
 
-    Write a reply addressed to **{name}**.
-    - Match tone: Casual → Friendly, Business → Formal, Funny → Witty but professional.
-    - Add a **personal closing** like: Best regards, [Your Name]".
-
-    IMPORTANT:
-    - Greet using {name}
-    - End the email with:  
-    **Warm regards,**  
+Instructions:
+Write a polite and personalized reply addressed to {name}.
+- Match tone: Casual → Friendly, Business → Formal, Funny → Witty but professional.
+- Always include a greeting using {name}.
+- End with:  
+best regards or best,  
+{your_name}
 """
 
     result = await Runner.run(reply_agent, run_config=config, input=prompt)
@@ -99,9 +117,9 @@ main_agent = Agent(
     instructions="""
 You are an email assistant.
 
-1. Call `is_junk(subject, sender, body)` → If True, return 'junk'
+1. Call `is_junk(subject, body)` → If True, return 'junk'
 2. Else, call `is_easy_response(subject, body)`
-3. If easy → call `generate_reply(subject, body, sender)` and return: 'easy: <reply>'
+3. If easy → call `generate_reply(subject, body, sender, id)` and return: 'easy: <reply>'
 4. Else → return 'hard'
 
 Always call tools. Never guess.
@@ -113,4 +131,7 @@ Always call tools. Never guess.
 # Run wrapper
 async def run_email_agent(input_text: str) -> str:
     result = await Runner.run(main_agent, run_config=config, input=input_text)
-    return result.final_output.split("\n")[0]
+    # replace subject: word with empty
+    replaced_subject_final_output = result.final_output.replace("Subject:", "")
+    # print(replaced_subject_final_output)
+    return replaced_subject_final_output

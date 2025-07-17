@@ -77,3 +77,6 @@ def marked_as_read(service, message_id):
     """Mark an email as read."""
     body = {"removeLabelIds": ["UNREAD"]}
     service.users().messages().modify(userId="me", id=message_id, body=body).execute()
+
+def get_reciever_name(message):
+    return message["sender"].split("<")[-1].replace(">", "").strip()

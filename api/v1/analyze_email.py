@@ -17,21 +17,23 @@ class Email(BaseModel):
     sender: str
     snippet: str
     id: str
+    user_id: str
+
 
 @router.post("/analyze")
 async def analyze_email(email: Email):
     try:
         input_text = (
-            f"Subject: {email.subject}\nFrom: {email.sender}\n\n{email.snippet}"
+            f"Subject: {email.subject}\nFrom: {email.sender}\n\n Body: {email.snippet}\n\n id: {email.user_id}"
         )
-
+        
         result = await run_email_agent(input_text)
         decision = result.strip().lower()
         print("RESULT:", result)
         print("DECISION:", decision)
 
         service = get_gmail_service()
-        
+
         email_dict = {
             "subject": email.subject,
             "sender": email.sender,
@@ -48,7 +50,11 @@ async def analyze_email(email: Email):
             to_email = email.sender.split("<")[-1].replace(">", "").strip()
             send_email_reply(service, to_email, email.subject, reply)
             marked_as_read(service, email.id)
-            return {"status": "easy", "reply": reply, "message":"auto reply sent!✅ email marked as read!"}
+            return {
+                "status": "easy",
+                "reply": reply,
+                "message": "auto reply sent!✅ email marked as read!",
+            }
 
         else:
             await save_hard_email_to_db(email_dict)
