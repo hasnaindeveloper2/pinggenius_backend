@@ -23,10 +23,8 @@ class Email(BaseModel):
 @router.post("/analyze")
 async def analyze_email(email: Email):
     try:
-        input_text = (
-            f"Subject: {email.subject}\nFrom: {email.sender}\n\n Body: {email.snippet}\n\n id: {email.user_id}"
-        )
-        
+        input_text = f"Subject: {email.subject}\nFrom: {email.sender}\n\n Body: {email.snippet}\n\n id: {email.user_id}"
+
         result = await run_email_agent(input_text)
         decision = result.strip().lower()
         print("RESULT:", result)

@@ -10,6 +10,7 @@ class GenerateEmailRequest(BaseModel):
     role: str
     website: str | None = None
     tone: str = "friendly"
+    user_id: str
 
 
 class EmailResponse(BaseModel):
@@ -25,6 +26,7 @@ async def generate_email(data: GenerateEmailRequest):
             role=data.role,
             website=data.website,
             tone=data.tone,
+            user_id=data.user_id,
         )
         return {
             "variation_1": result[0],

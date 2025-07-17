@@ -8,12 +8,20 @@ from agents import (
 from openai import AsyncOpenAI
 import os
 from dotenv import load_dotenv
+from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorClient
 import re
 
 load_dotenv()
+
 set_tracing_disabled(disabled=True)
 
 gemini_api_key = os.getenv("GEMINI_API_KEY")
+
+
+client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
+db = client["test"]
+users_collection = db["waitlistsusers"]
 
 provider = AsyncOpenAI(
     api_key=gemini_api_key,
@@ -59,8 +67,15 @@ def extract_name_from_linkedin(url: str) -> str:
 
 
 async def generate_cold_email(
-    linkedin_url: str, role: str, website: str | None, tone: str
+    linkedin_url: str, role: str, website: str | None, tone: str, user_id: str
 ) -> list[str]:
+    
+    mongo_id = ObjectId(user_id)
+    user = await users_collection.find_one({"_id": mongo_id})
+    your_name = (
+        user["username"] if user and "username" in user else "PingGenius Assistant"
+    )
+    
     name = extract_name_from_linkedin(linkedin_url)
     input_prompt = f"""
 Name: {name}
@@ -69,7 +84,7 @@ Role: {role}
 Website: {website or 'Not provided'}
 Tone: {tone}
 always end with Best Regard or Warm Regards,
-{"pinggenius assistant"}
+{your_name}
 
 Generate 2 cold email variations.
 """
