@@ -43,6 +43,7 @@ Tone must match the input:
 
 Always keep it short, relevant, and focused on getting a reply.
 
+important!
 Your output format should be:
 
 ---
@@ -69,13 +70,16 @@ def extract_name_from_linkedin(url: str) -> str:
 async def generate_cold_email(
     linkedin_url: str, role: str, website: str | None, tone: str, user_id: str
 ) -> list[str]:
-    
+
     mongo_id = ObjectId(user_id)
     user = await users_collection.find_one({"_id": mongo_id})
     your_name = (
         user["username"] if user and "username" in user else "PingGenius Assistant"
     )
     
+    # extarct the name remove extra numbers from your_name and add space like "Hasnain siddique"
+    your_name = re.sub(r"\d+", " ", your_name).strip()
+
     name = extract_name_from_linkedin(linkedin_url)
     input_prompt = f"""
 Name: {name}
@@ -83,7 +87,7 @@ LinkedIn URL: {linkedin_url}
 Role: {role}
 Website: {website or 'Not provided'}
 Tone: {tone}
-always end with Best Regard or Warm Regards,
+always end with Best Regard or Best,
 {your_name}
 
 Generate 2 cold email variations.
