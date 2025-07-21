@@ -1,10 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from utils.email_sender import send_email
 from models.sequence import save_sequence
 from models.contact import get_contact_by_id, update_contact_status
 from gmail_service import get_gmail_service, send_email_reply
-from utils import extract_subject
+from utils.extract_subject import extract_subject
 
 router = APIRouter(tags=["Sequence"])
 
@@ -31,7 +30,11 @@ async def start_sequence(data: SequenceRequest):
 
         if not contact:
             raise HTTPException(status_code=404, detail="Contact not found")
-        
+
+        print(
+            f"Sending email to: {to_email} with subject: {subject} email body: {data.email_body}"
+        )
+
         # Send the email using the Gmail service
         send_email_reply(service, to_email, subject, data.email_body)
         await update_contact_status(contact_id=data.contact_id, status="inSequence")
