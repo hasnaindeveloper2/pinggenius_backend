@@ -31,10 +31,6 @@ async def start_sequence(data: SequenceRequest):
         if not contact:
             raise HTTPException(status_code=404, detail="Contact not found")
 
-        print(
-            f"Sending email to: {to_email} with subject: {subject} email body: {data.email_body}"
-        )
-
         # Send the email using the Gmail service
         send_email_reply(service, to_email, subject, data.email_body)
         await update_contact_status(contact_id=data.contact_id, status="inSequence")

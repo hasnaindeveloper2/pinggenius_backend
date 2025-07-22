@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorClient
 import re
+import asyncio
 
 load_dotenv()
 
@@ -42,6 +43,8 @@ Tone must match the input:
 - Funny: witty but professional
 
 Always keep it short, relevant, and focused on getting a reply.
+
+if you are using /n or /n/n in the email, use the \n character instead of /n or /n/n.
 
 important!
 Your output format should be:
@@ -76,7 +79,7 @@ async def generate_cold_email(
     your_name = (
         user["username"] if user and "username" in user else "PingGenius Assistant"
     )
-    
+
     # extarct the name remove extra numbers from your_name and add space like "Hasnain siddique"
     your_name = re.sub(r"\d+", " ", your_name).strip()
 
