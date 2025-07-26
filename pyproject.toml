@@ -13,6 +13,7 @@ dependencies = [
     "motor>=3.7.1",
     "openai-agents>=0.0.19",
     "playwright>=1.54.0",
+    "playwright-stealth>=2.0.0",
     "python-dotenv>=1.1.1",
     "uvicorn>=0.34.3",
 ]
