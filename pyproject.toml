@@ -10,6 +10,7 @@ dependencies = [
     "google-api-python-client>=2.174.0",
     "google-auth>=2.40.3",
     "google-auth-oauthlib>=1.2.2",
+    "google-search-results>=2.4.2",
     "motor>=3.7.1",
     "openai-agents>=0.0.19",
     "playwright>=1.54.0",

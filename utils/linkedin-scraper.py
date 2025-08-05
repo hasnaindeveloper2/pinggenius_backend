@@ -1,48 +1,52 @@
-import requests
+import os
+from serpapi import GoogleSearch
+from dotenv import load_dotenv
 
-def get_linkedin_profile_info(query, serp_api_key):
-    
-    if not query:
-        raise ValueError("Query must not be empty")
-    
-    # get name of the user from the query
-    get_name = query
-    
-    params = {
-        "engine": "google",
-        "q": f"site:linkedin.com/in/ {query}",
-        "api_key": serp_api_key,
-        "num": 3
+load_dotenv()
+
+SERPAPI_API_KEY = os.getenv("SERPAPI_API_KEY")
+
+
+def fetch_linkedin_data(linkedin_url: str):
+    if not linkedin_url or "linkedin.com" not in linkedin_url:
+        return {"error": "Invalid LinkedIn URL"}
+
+    profile_id = linkedin_url.split("/")[-2]  # crude but works
+    query = f"{profile_id} site:linkedin.com/in/"
+
+    search = GoogleSearch({"q": query, "engine": "google", "api_key": SERPAPI_API_KEY})
+
+    results = search.get_dict()
+    if "error" in results:
+        return {"error": results["error"]}
+
+    organic = results.get("organic_results", [])
+    if not organic:
+        return {"error": "No profile found"}
+
+    snippet = organic[0].get("snippet", "")
+    title = organic[0].get("title", "")
+    link = organic[0].get("link", "")
+
+    return {
+        "name": title.split(" - ")[0] if "-" in title else title,
+        "headline": title.split(" - ")[1] if "-" in title else "",
+        "about": snippet,
+        "profile_link": link,
     }
 
-    response = requests.get("https://serpapi.com/search", params=params)
-    data = response.json()
 
-    results = []
+def guardrail_linkedin_scrape(url: str):
+    data = fetch_linkedin_data(url)
 
-    for result in data.get("organic_results", []):
-        title = result.get("title", "")
-        link = result.get("link", "")
-        snippet = result.get("snippet", "")
+    if "error" in data:
+        return {"status": "fail", "message": data["error"]}
 
-        results.append({
-            "name": title.split(" - ")[0],
-            "headline": title.split(" - ")[1] if " - " in title else "",
-            "linkedin_url": link,
-            "about": snippet
-        })
+    if len(data.get("about", "")) < 20:
+        return {"status": "fail", "message": "Too little info from SERP"}
 
-    return results
+    print(data)
+    return {"status": "success", "data": data}
 
-# Example usage
-query = "agentic ai developer"  # or a person's name
-serp_api_key = "YOUR_SERPAPI_KEY"
 
-profiles = get_linkedin_profile_info(query, serp_api_key)
-
-for p in profiles:
-    print(f"Name: {p['name']}")
-    print(f"Headline: {p['headline']}")
-    print(f"LinkedIn URL: {p['linkedin_url']}")
-    print(f"About: {p['about']}")
-    print("-" * 50)
+guardrail_linkedin_scrape("https://www.linkedin.com/in/hasnainxdev/")

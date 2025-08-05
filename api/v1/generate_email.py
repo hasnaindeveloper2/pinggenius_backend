@@ -1,16 +1,19 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl, Field
+from typing import Optional, Literal
 from utils.email_generator import generate_cold_email
 
 router = APIRouter(tags=["Cold Email"])
 
 
 class GenerateEmailRequest(BaseModel):
-    linkedin_url: str
-    role: str
-    website: str | None = None
-    tone: str = "friendly"
-    user_id: str
+    linkedin_url: HttpUrl = Field(
+        ..., description="Must be a valid LinkedIn profile URL"
+    )
+    role: str = Field(..., min_length=2)
+    website: Optional[HttpUrl] = Field(None, description="User or company website")
+    tone: Literal["friendly", "formal", "funny"] = "friendly"
+    user_id: str = Field(..., min_length=3)
 
 
 class EmailResponse(BaseModel):
