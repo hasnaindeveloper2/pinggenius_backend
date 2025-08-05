@@ -35,7 +35,7 @@ config = RunConfig(model=model, model_provider=provider)
 generator_agent = Agent(
     name="Cold Email Generator",
     instructions="""
-You generate ultra-personalized cold emails based on LinkedIn profile, role, and website.
+You generate ultra-personalized cold emails based on LinkedIn profile, role, about, and website.
 
 Tone must match the input:
 - Friendly: conversational and warm
@@ -71,7 +71,12 @@ def extract_name_from_linkedin(url: str) -> str:
 
 
 async def generate_cold_email(
-    linkedin_url: str, role: str, website: str | None, tone: str, user_id: str
+    linkedin_url: str,
+    role: str,
+    website: str | None,
+    tone: str,
+    about: str | None,
+    user_id: str,
 ) -> list[str]:
 
     mongo_id = ObjectId(user_id)
@@ -90,6 +95,7 @@ LinkedIn URL: {linkedin_url}
 Role: {role}
 Website: {website or 'Not provided'}
 Tone: {tone}
+About: {about}
 always end with Best Regard or Best,
 {your_name}
 

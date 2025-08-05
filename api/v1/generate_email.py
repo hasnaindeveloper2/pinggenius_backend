@@ -2,18 +2,16 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, HttpUrl, Field
 from typing import Optional, Literal
 from utils.email_generator import generate_cold_email
+from utils.linkedin_scraper import guardrail_linkedin_scrape
 
 router = APIRouter(tags=["Cold Email"])
 
 
 class GenerateEmailRequest(BaseModel):
-    linkedin_url: HttpUrl = Field(
-        ..., description="Must be a valid LinkedIn profile URL"
-    )
-    role: str = Field(..., min_length=2)
-    website: Optional[HttpUrl] = Field(None, description="User or company website")
+    linkedin_url: str
+    website: str | None = None
     tone: Literal["friendly", "formal", "funny"] = "friendly"
-    user_id: str = Field(..., min_length=3)
+    user_id: str
 
 
 class EmailResponse(BaseModel):
@@ -24,11 +22,23 @@ class EmailResponse(BaseModel):
 @router.post("/generate-email", response_model=EmailResponse)
 async def generate_email(data: GenerateEmailRequest):
     try:
+        # STEP 1: Validate and Guardrail
+        if "linkedin.com/in/" not in data.linkedin_url:
+            raise HTTPException(status_code=400, detail="Invalid LinkedIn URL format")
+
+        # STEP 2: Scrape LinkedIn with guardrail + caching
+        linkedin_data = guardrail_linkedin_scrape(data.linkedin_url)
+        if linkedin_data["status"] != "success":
+            raise HTTPException(status_code=400, detail=linkedin_data["message"])
+
+        user_data = linkedin_data["data"]
+
         result = await generate_cold_email(
             linkedin_url=data.linkedin_url,
-            role=data.role,
+            role=user_data["headline"],
             website=data.website,
             tone=data.tone,
+            about=user_data["about"],
             user_id=data.user_id,
         )
         return {

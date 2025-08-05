@@ -7,12 +7,24 @@ load_dotenv()
 SERPAPI_API_KEY = os.getenv("SERPAPI_API_KEY")
 
 
+def extract_linkedin_username(url: str) -> str:
+    # Extract part after 'linkedin.com/in/'
+    try:
+        return url.split("linkedin.com/in/")[1].strip("/").split("/")[0]
+    except IndexError:
+        return ""
+
+
+def build_query(url: str) -> str:
+    username = extract_linkedin_username(url)
+    return f"{username} site:linkedin.com/in/" if username else url
+
+
 def fetch_linkedin_data(linkedin_url: str):
     if not linkedin_url or "linkedin.com" not in linkedin_url:
         return {"error": "Invalid LinkedIn URL"}
 
-    profile_id = linkedin_url.split("/")[-2]  # crude but works
-    query = f"{profile_id} site:linkedin.com/in/"
+    query = build_query(linkedin_url)
 
     search = GoogleSearch({"q": query, "engine": "google", "api_key": SERPAPI_API_KEY})
 
@@ -47,6 +59,3 @@ def guardrail_linkedin_scrape(url: str):
 
     print(data)
     return {"status": "success", "data": data}
-
-
-guardrail_linkedin_scrape("https://www.linkedin.com/in/hasnainxdev/")
