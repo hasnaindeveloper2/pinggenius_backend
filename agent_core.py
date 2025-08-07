@@ -2,7 +2,19 @@ import os
 from utils.extract_name import extract_name
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
-from agents import Agent, OpenAIChatCompletionsModel, RunConfig, Runner, function_tool
+from agents import (
+    Agent,
+    OpenAIChatCompletionsModel,
+    RunConfig,
+    Runner,
+    function_tool,
+    output_guardrail,
+    OutputGuardrailTripwireTriggered,
+    GuardrailFunctionOutput,
+    RunContextWrapper,
+    TResponseInputItem,
+)
+from pydantic import BaseModel
 import asyncio
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -28,6 +40,46 @@ model = OpenAIChatCompletionsModel(
     model="gemini-2.0-flash",
 )
 config = RunConfig(model=model, model_provider=provider, tracing_disabled=True)
+
+
+class ReplyValidatorOutput(BaseModel):
+    is_valid_reply: bool
+    reasoning: str
+
+
+# -------------- guardrail agents ------------------
+reply_guardrail_agent = Agent(
+    name="Reply Output Guardrail",
+    instructions="""
+You are a reply quality checker.
+
+Given an email reply, decide if it's:
+- Polite and directly related to the original email
+- Includes a proper greeting with the sender’s name
+- Ends with "best regards" or "best"
+- Doesn’t contain filler like "I’m just an AI language model" or garbage
+
+If yes, return: is_valid_reply = True  
+Else, return: is_valid_reply = False and explain why.
+""",
+    output_type=ReplyValidatorOutput,
+)
+
+
+@output_guardrail
+async def validate_reply_output(
+    ctx: RunContextWrapper,
+    agent: Agent,
+    input: str | list[TResponseInputItem],
+) -> GuardrailFunctionOutput:
+    result = await Runner.run(
+        reply_guardrail_agent, input=input, context=ctx.context, run_config=config
+    )
+    return GuardrailFunctionOutput(
+        output_info=result.final_output,
+        tripwire_triggered=not result.final_output.is_valid_reply,
+    )
+
 
 # ------------------- Tools -------------------
 
@@ -71,6 +123,7 @@ You are a professional email replier.
 - Always include a closing like:  
 best regards,
 """,
+    output_guardrails=[validate_reply_output],
 )
 
 
