@@ -43,7 +43,12 @@ config = RunConfig(model=model, model_provider=provider, tracing_disabled=True)
 
 
 class ReplyValidatorOutput(BaseModel):
-    is_valid_reply: bool
+    is_not_valid_reply: bool
+    reasoning: str
+
+
+class EasyResponseCheck(BaseModel):
+    is_easy: bool
     reasoning: str
 
 
@@ -59,8 +64,8 @@ Given an email reply, decide if it's:
 - Ends with "best regards" or "best"
 - Doesn’t contain filler like "I’m just an AI language model" or garbage
 
-If yes, return: is_valid_reply = True  
-Else, return: is_valid_reply = False and explain why.
+If yes, return: is_not_valid_reply = True  
+Else, return: is_not_valid_reply = False and explain why.
 """,
     output_type=ReplyValidatorOutput,
 )
@@ -77,7 +82,7 @@ async def validate_reply_output(
     )
     return GuardrailFunctionOutput(
         output_info=result.final_output,
-        tripwire_triggered=not result.final_output.is_valid_reply,
+        tripwire_triggered=result.final_output.is_not_valid_reply,
     )
 
 
@@ -89,25 +94,33 @@ def is_junk(subject: str, body: str) -> bool:
     return "unsubscribe" in body.lower() or "offer" in subject.lower()
 
 
+easy_response_agent = Agent(
+    name="Easy Response Classifier",
+    instructions="""
+You are an email complexity detector.
+
+Given an email's subject and body, decide if it's an **easy response**. That means:
+- It's quick to reply (status update, scheduling, thanks, minor question)
+- Doesn't need deep thought, long writing, or research
+
+If yes → is_easy = True  
+If no → is_easy = False
+
+Always provide a short reasoning (e.g., "Simple scheduling request", "Detailed pricing inquiry").
+""",
+    output_type=EasyResponseCheck,
+)
+
+
 @function_tool
-def is_easy_response(subject: str, body: str) -> bool:
-    keywords = [
-        "projects",
-        "status",
-        "update",
-        "meeting",
-        "availability",
-        "question",
-        "help",
-        "thanks",
-        "schedule",
-        "important",
-        "greeting",
-        "feedback",
-        "conversation",
-        "talk",
-    ]
-    return any(word in f"{subject.lower()} {body.lower()}" for word in keywords)
+async def is_easy_response(subject: str, body: str) -> bool:
+    input_prompt = f"Subject: {subject}\nBody: {body}"
+    result = await Runner.run(
+        easy_response_agent,
+        input=input_prompt,
+        run_config=config,
+    )
+    return result.final_output.is_easy
 
 
 # Sub-agent for reply generation
@@ -123,7 +136,6 @@ You are a professional email replier.
 - Always include a closing like:  
 best regards,
 """,
-    output_guardrails=[validate_reply_output],
 )
 
 
@@ -168,7 +180,7 @@ best regards or best,
 main_agent = Agent(
     name="Email Agent",
     instructions="""
-You are an email assistant.
+You are an email agent.
 
 1. Call `is_junk(subject, body)` → If True, return 'junk'
 2. Else, call `is_easy_response(subject, body)`
@@ -178,6 +190,7 @@ You are an email assistant.
 Always call tools. Never guess.
 """,
     tools=[is_junk, is_easy_response, generate_reply],
+    output_guardrails=[validate_reply_output],
 )
 
 
@@ -187,7 +200,12 @@ async def run_email_agent(input_text: str) -> str:
         result = await Runner.run(main_agent, run_config=config, input=input_text)
         # replace subject: word with empty
         replaced_subject_final_output = result.final_output.replace("Subject:", "")
-        # print(replaced_subject_final_output)
+        print(replaced_subject_final_output)
         return replaced_subject_final_output
     except OutputGuardrailTripwireTriggered:
         print("guardrail was triggered — not a valid reply")
+
+
+input_text = f"Subject: hdhsddshi\nFrom:try <tryfrelacer@gmail.com>\n\n Body: sjshdsjdhjs\n\n id: 689210e73ab6579e73ad5704"
+
+asyncio.run(run_email_agent(input_text=input_text))
