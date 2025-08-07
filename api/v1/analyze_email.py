@@ -27,8 +27,6 @@ async def analyze_email(email: Email):
 
         result = await run_email_agent(input_text)
         decision = result.strip().lower()
-        print("RESULT:", result)
-        print("DECISION:", decision)
 
         service = get_gmail_service()
 
