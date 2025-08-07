@@ -183,8 +183,11 @@ Always call tools. Never guess.
 
 # Run wrapper
 async def run_email_agent(input_text: str) -> str:
-    result = await Runner.run(main_agent, run_config=config, input=input_text)
-    # replace subject: word with empty
-    replaced_subject_final_output = result.final_output.replace("Subject:", "")
-    # print(replaced_subject_final_output)
-    return replaced_subject_final_output
+    try:
+        result = await Runner.run(main_agent, run_config=config, input=input_text)
+        # replace subject: word with empty
+        replaced_subject_final_output = result.final_output.replace("Subject:", "")
+        # print(replaced_subject_final_output)
+        return replaced_subject_final_output
+    except OutputGuardrailTripwireTriggered:
+        print("guardrail was triggered — not a valid reply")
