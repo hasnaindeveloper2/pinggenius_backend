@@ -14,10 +14,8 @@ from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
 from bson import ObjectId
-from typing import Literal
 from motor.motor_asyncio import AsyncIOMotorClient
 import re
-import asyncio
 
 load_dotenv()
 
@@ -189,14 +187,3 @@ Generate 2 cold email variations.
         return smart_split_variations(result.final_output)
     except OutputGuardrailTripwireTriggered:
         print("\n Guardrail tripped - not valid cold email")
-
-
-asyncio.run(
-    generate_cold_email(
-        linkedin_url="https://www.linkedin.com/in/hasnaindeveloper/",
-        role="Full Stack developer",
-        tone="formal",
-        about="Hi I am a full stack developer dlivered over 3+ MVPs, and 30+ projects",
-        user_id="689210e73ab6579e73ad5704",
-    )
-)
