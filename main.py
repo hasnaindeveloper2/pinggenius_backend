@@ -6,6 +6,7 @@ from api.v1 import save_contact
 from api.v1 import start_sequence
 from api.v1 import list_contacts
 from api.v1 import hard_emails
+
 # from gmail_service import fetch_recent_emails, get_gmail_service
 from utils.APScheduler import start_scheduler
 
@@ -14,7 +15,7 @@ app = FastAPI()
 
 @app.get("/")
 def read_root():
-    return {"message": "PingGenius Email Agent API is running 🚀"}
+    return {"message": "PingGenius Agent API is running 🚀"}
 
 
 # -------- Routers --------
@@ -28,9 +29,12 @@ app.include_router(hard_emails.router, prefix="/api/v1")
 
 # -------- fetched latest emails from gmail --------
 
+
 @app.on_event("startup")
 async def startup_event():
     start_scheduler()
+
+
 # @app.get("/latest-emails")
 # def test_gmail():
 #     try:
