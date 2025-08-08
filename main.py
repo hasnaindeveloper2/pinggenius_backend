@@ -6,8 +6,8 @@ from api.v1 import save_contact
 from api.v1 import start_sequence
 from api.v1 import list_contacts
 from api.v1 import hard_emails
-from gmail_service import fetch_recent_emails, get_gmail_service
-
+# from gmail_service import fetch_recent_emails, get_gmail_service
+from utils.APScheduler import start_scheduler
 
 app = FastAPI()
 
@@ -27,11 +27,15 @@ app.include_router(hard_emails.router, prefix="/api/v1")
 
 
 # -------- fetched latest emails from gmail --------
-@app.get("/latest-emails")
-def test_gmail():
-    try:
-        service = get_gmail_service()
-        emails = fetch_recent_emails(service)
-        return {"count": len(emails), "emails": emails}
-    except Exception as e:
-        return {"error": str(e)}
+
+@app.on_event("startup")
+async def startup_event():
+    start_scheduler()
+# @app.get("/latest-emails")
+# def test_gmail():
+#     try:
+#         service = get_gmail_service()
+#         emails = fetch_recent_emails(service)
+#         return {"count": len(emails), "emails": emails}
+#     except Exception as e:
+#         return {"error": str(e)}

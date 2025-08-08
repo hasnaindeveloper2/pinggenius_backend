@@ -33,27 +33,50 @@ def get_gmail_service():
     return build("gmail", "v1", credentials=creds)
 
 
-def fetch_recent_emails(service, max_results=5):
-    results = (
-        service.users().messages().list(userId="me", maxResults=max_results).execute()
-    )
-    messages = results.get("messages", [])
 
-    emails = []
-    for msg in messages:
-        msg_data = service.users().messages().get(userId="me", id=msg["id"]).execute()
-        headers = msg_data["payload"]["headers"]
-        subject = next(
-            (h["value"] for h in headers if h["name"] == "Subject"), ""
-        )  # Default to empty string if not found
-        sender = next(
-            (h["value"] for h in headers if h["name"] == "From"), ""
-        )  # Default to empty string if not found
-        snippet = msg_data.get("snippet", "")
-        emails.append(
-            {"id": msg["id"], "subject": subject, "sender": sender, "snippet": snippet}
-        )
-    return emails
+def fetch_recent_emails(service, max_results: int):
+    """
+    Fetch the most recent unread emails from Gmail.
+    
+    Args:
+        service: Authenticated Gmail API service instance.
+        max_results (int): Maximum number of emails to fetch.
+    
+    Returns:
+        list[dict]: List of emails with id, subject, sender, and snippet.
+    """
+    try:
+        # Fetch unread messages only
+        results = service.users().messages().list(
+            userId="me",
+            maxResults=max_results,
+            q="is:unread"
+        ).execute()
+
+        messages = results.get("messages", [])
+        emails = []
+
+        for msg in messages:
+            msg_data = service.users().messages().get(
+                userId="me",
+                id=msg["id"],
+                format="metadata",
+                metadataHeaders=["Subject", "From"]
+            ).execute()
+
+            headers = {h["name"]: h["value"] for h in msg_data.get("payload", {}).get("headers", [])}
+            emails.append({
+                "id": msg["id"],
+                "subject": headers.get("Subject", ""),
+                "sender": headers.get("From", ""),
+                "snippet": msg_data.get("snippet", "")
+            })
+
+        return emails
+
+    except Exception as e:
+        # Log and raise in production
+        raise RuntimeError(f"Error fetching recent emails: {e}")
 
 
 def move_to_trash(service, message_id):
