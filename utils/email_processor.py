@@ -11,7 +11,7 @@ from models.hard_email import save_hard_email_to_db
 async def process_email(email):
     """Process a single email dict {subject, sender, snippet, id, user_id}."""
     service = get_gmail_service()
-    input_text = f"Subject: {email['subject']}\nFrom: {email['sender']}\n\n Body: {email['snippet']}\n\n id: {email['user_id']}"
+    input_text = f"Subject: {email['subject']}\nFrom: {email['sender']}\n\n Body: {email['snippet']}\n\n id: 689210e73ab6579e73ad5704"
 
     result = await run_email_agent(input_text)
     decision = result.strip().lower()
