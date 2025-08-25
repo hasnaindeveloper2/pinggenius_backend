@@ -14,7 +14,7 @@ async def process_email(email):
     input_text = f"Subject: {email['subject']}\nFrom: {email['sender']}\n\n Body: {email['snippet']}\n\n id: 689210e73ab6579e73ad5704"
 
     result = await run_email_agent(input_text)
-    decision = result.strip().lower()
+    decision = result.lower()
 
     if decision == "junk":
         move_to_trash(service, email["id"])
