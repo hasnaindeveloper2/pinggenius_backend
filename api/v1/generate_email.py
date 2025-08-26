@@ -22,7 +22,7 @@ class EmailResponse(BaseModel):
 @router.post("/generate-email", response_model=EmailResponse)
 async def generate_email(data: GenerateEmailRequest):
     try:
-        # STEP 1: Validate and Guardrail
+        # STEP 1: Validate
         if "linkedin.com/in/" not in data.linkedin_url:
             raise HTTPException(status_code=400, detail="Invalid LinkedIn URL format")
 

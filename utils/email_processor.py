@@ -23,7 +23,7 @@ async def process_email(email):
     elif decision.startswith("easy:"):
         reply = decision.replace("easy:", "").strip()
         to_email = email["sender"].split("<")[-1].replace(">", "").strip()
-        send_email_reply(service, to_email, email["subject"], reply)
+        send_email_reply(service, to_email, email["subject"], reply.upper())
         marked_as_read(service, email["id"])
         return {
             "status": "easy",

@@ -13,6 +13,7 @@ from agents import (
     GuardrailFunctionOutput,
     RunContextWrapper,
     TResponseInputItem,
+    set_tracing_disabled,
 )
 from pydantic import BaseModel
 import asyncio
@@ -24,26 +25,28 @@ import re
 load_dotenv()
 gemini_api_key = os.getenv("GEMINI_API_KEY")
 
+set_tracing_disabled(disabled=True)
+
 client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
 db = client["test"]
 users_collection = db["waitlistsusers"]
 
 # Gemini client setup
-provider = AsyncOpenAI(
+client = AsyncOpenAI(
     api_key=gemini_api_key,
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
 )
 
 # Model + config
 model = OpenAIChatCompletionsModel(
-    openai_client=provider,
+    openai_client=client,
     model="gemini-2.0-flash",
 )
-config = RunConfig(model=model, model_provider=provider, tracing_disabled=True)
 
 
+# ---------------- Models ----------------
 class ReplyValidatorOutput(BaseModel):
-    is_not_valid_reply: bool
+    is_valid_reply: bool
     reasoning: str
 
 
@@ -52,7 +55,12 @@ class EasyResponseCheck(BaseModel):
     reasoning: str
 
 
-# -------------- guardrail agents ------------------
+class ProfessionalCheck(BaseModel):
+    is_professional: bool
+    reasoning: str
+
+
+# ---------------- Guardrail ----------------
 reply_guardrail_agent = Agent(
     name="Reply Output Guardrail",
     instructions="""
@@ -64,10 +72,11 @@ Given an email reply, decide if it's:
 - Ends with "best regards" or "best"
 - Doesn’t contain filler like "I’m just an AI language model" or garbage
 
-If yes, return: is_not_valid_reply = True  
-Else, return: is_not_valid_reply = False and explain why.
+If yes, return: is_valid_reply = True  
+Else, return: is_valid_reply = False.
 """,
     output_type=ReplyValidatorOutput,
+    model=model,
 )
 
 
@@ -77,23 +86,41 @@ async def validate_reply_output(
     agent: Agent,
     input: str | list[TResponseInputItem],
 ) -> GuardrailFunctionOutput:
-    result = await Runner.run(
-        reply_guardrail_agent, input=input, context=ctx.context, run_config=config
-    )
+    result = await Runner.run(reply_guardrail_agent, input=input, context=ctx.context)
     return GuardrailFunctionOutput(
         output_info=result.final_output,
-        tripwire_triggered=result.final_output.is_not_valid_reply,
+        tripwire_triggered=not result.final_output.is_valid_reply,
     )
 
 
-# ------------------- Tools -------------------
+# ---------------- Agents ----------------
+
+# 1. Professional filter
+professional_agent = Agent(
+    name="Professional Filter",
+    instructions="""
+You are an email professional relevance filter.
+
+Given subject + body, decide if the email is PROFESSIONAL (business, client, work, networking, partnerships)
+or NON-PROFESSIONAL (spam, promotions, newsletters, jobs, job alerts, welcome, join, social media notifications like LinkedIn/Twitter/Instagram, social, updates, system alerts, receipts, OTPs).
+
+Output:
+- is_professional (True/False)
+- reasoning (one short reason why)
+""",
+    output_type=ProfessionalCheck,
+    model=model,
+)
 
 
 @function_tool
-def is_junk(subject: str, body: str) -> bool:
-    return "unsubscribe" in body.lower() or "offer" in subject.lower()
+async def is_professional(subject: str, body: str) -> bool:
+    input_prompt = f"Subject: {subject}\nBody: {body}"
+    result = await Runner.run(professional_agent, input=input_prompt)
+    return result.final_output.is_professional
 
 
+# 2. Easy response classifier
 easy_response_agent = Agent(
     name="Easy Response Classifier",
     instructions="""
@@ -103,12 +130,13 @@ Given an email's subject and body, decide if it's an **easy response**. That mea
 - It's quick to reply (status update, scheduling, thanks, minor question)
 - Doesn't need deep thought, long writing, or research
 
-If yes → is_easy = True  
+If yes → is_easy = True
 If no → is_easy = False
 
-Always provide a short reasoning (e.g., "Simple scheduling request", "Detailed pricing inquiry").
+reasoning too (but optional).
 """,
     output_type=EasyResponseCheck,
+    model=model,
 )
 
 
@@ -118,12 +146,11 @@ async def is_easy_response(subject: str, body: str) -> bool:
     result = await Runner.run(
         easy_response_agent,
         input=input_prompt,
-        run_config=config,
     )
     return result.final_output.is_easy
 
 
-# Sub-agent for reply generation
+# 3. Reply generator
 reply_agent = Agent(
     name="Reply Writer",
     instructions="""
@@ -136,6 +163,7 @@ You are a professional email replier.
 - Always include a closing like:  
 best regards,
 """,
+    model=model,
 )
 
 
@@ -147,13 +175,10 @@ async def generate_reply(subject: str, body: str, sender: str, id: str) -> str:
         user["username"] if user and "username" in user else "PingGenius Assistant"
     )
 
-    # extarct the name remove extra numbers from your_name and add space like "Hasnain siddique"
     your_name = re.sub(r"\d+", " ", your_name).strip()
-
     name = extract_name(sender)
 
     body = body.strip() if body else "No body content provided."
-    print("body is presents", body)
 
     prompt = f"""You are an ultra-personalized email reply assistant.
     
@@ -171,36 +196,38 @@ best regards or best,
 {your_name}
 """
 
-    result = await Runner.run(reply_agent, run_config=config, input=prompt)
+    result = await Runner.run(reply_agent, input=prompt)
     return result.final_output
 
 
-# ------------------- Main Agent -------------------
-
+# ---------------- Main Agent ----------------
 main_agent = Agent(
     name="Email Agent",
     instructions="""
 You are an email agent.
 
-1. Call `is_junk(subject, body)` → If True, return 'junk'
-2. Else, call `is_easy_response(subject, body)`
-3. If easy → call `generate_reply(subject, body, sender, id)` and return: 'easy: <reply>'
-4. Else → return 'hard'
+1. Call `is_professional(subject, body)` → 
+   - If False → return 'junk'
+2. Else, call `is_easy_response(subject, body)` → 
+   - If easy → call `generate_reply(subject, body, sender, id)` and return: 'easy: <reply>'
+   - If not easy → return 'hard'
 
 Always call tools. Never guess.
 """,
-    tools=[is_junk, is_easy_response, generate_reply],
+    tools=[is_professional, is_easy_response, generate_reply],
     output_guardrails=[validate_reply_output],
+    model=model,
 )
 
 
 # Run wrapper
 async def run_email_agent(input_text: str) -> str:
     try:
-        result = await Runner.run(main_agent, run_config=config, input=input_text)
+        result = await Runner.run(main_agent, input=input_text)
         # replace subject: word with empty
-        replaced_subject_final_output = result.final_output.replace("Subject:", "")
+        final_output = result.final_output.replace("Subject:", "")
 
-        return replaced_subject_final_output
+        print(final_output.title())
+        return final_output
     except OutputGuardrailTripwireTriggered:
         print("guardrail was triggered — not a valid reply")

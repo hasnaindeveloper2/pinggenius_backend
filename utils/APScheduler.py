@@ -10,17 +10,19 @@ scheduler = AsyncIOScheduler()
 
 
 async def scheduled_email_check():
-    
+
     print("🔍 Checking for new emails...")
     service = get_gmail_service()
     emails = fetch_recent_emails(
-        service, max_results=5
+        service, max_results=2
     )  # Returns list of {subject, sender, snippet, id}
     for email in emails:
-        result = await process_email(email)
-        print(result)
+        # result = await process_email(email)
+        if not email:
+            print("No! new emails yet!")
+        print(email)
 
 
 def start_scheduler():
-    scheduler.add_job(scheduled_email_check, "interval", minutes=1)
+    scheduler.add_job(scheduled_email_check, "interval", seconds=1)
     scheduler.start()

@@ -33,44 +33,59 @@ def get_gmail_service():
     return build("gmail", "v1", credentials=creds)
 
 
-
 def fetch_recent_emails(service, max_results: int):
     """
     Fetch the most recent unread emails from Gmail.
-    
+
     Args:
         service: Authenticated Gmail API service instance.
         max_results (int): Maximum number of emails to fetch.
-    
+
     Returns:
         list[dict]: List of emails with id, subject, sender, and snippet.
     """
     try:
         # Fetch unread messages only
-        results = service.users().messages().list(
-            userId="me",
-            maxResults=max_results,
-            q="is:unread"
-        ).execute()
+        results = (
+            service.users()
+            .messages()
+            .list(userId="me", maxResults=max_results, q="category:primary")
+            .execute()
+        )
 
         messages = results.get("messages", [])
         emails = []
 
         for msg in messages:
-            msg_data = service.users().messages().get(
-                userId="me",
-                id=msg["id"],
-                format="metadata",
-                metadataHeaders=["Subject", "From"]
-            ).execute()
+            msg_data = (
+                service.users()
+                .messages()
+                .get(
+                    userId="me",
+                    id=msg["id"],
+                    format="metadata",
+                    metadataHeaders=["Subject", "From"],
+                )
+                .execute()
+            )
 
-            headers = {h["name"]: h["value"] for h in msg_data.get("payload", {}).get("headers", [])}
-            emails.append({
-                "id": msg["id"],
-                "subject": headers.get("Subject", ""),
-                "sender": headers.get("From", ""),
-                "snippet": msg_data.get("snippet", "")
-            })
+            headers = {
+                h["name"]: h["value"]
+                for h in msg_data.get("payload", {}).get("headers", [])
+            }
+
+            # Get Gmail historyId to track latest state
+            history_id = msg_data.get("historyId")
+            
+
+            emails.append(
+                {
+                    "id": msg["id"],
+                    "subject": headers.get("Subject", ""),
+                    "sender": headers.get("From", ""),
+                    "snippet": msg_data.get("snippet", ""),
+                }
+            )
 
         return emails
 
@@ -87,7 +102,9 @@ def send_email_reply(service, to_email, subject, message_body):
     """Send an email reply using Gmail API."""
     message = MIMEText(message_body)
     message["to"] = to_email
-    message["subject"] = "Re: " + subject # why Re? because it's a reply to the original email
+    message["subject"] = (
+        "Re: " + subject
+    )  # why Re? because it's a reply to the original email
 
     raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
     body = {"raw": raw_message}
@@ -100,6 +117,7 @@ def marked_as_read(service, message_id):
     """Mark an email as read."""
     body = {"removeLabelIds": ["UNREAD"]}
     service.users().messages().modify(userId="me", id=message_id, body=body).execute()
+
 
 def get_reciever_name(message):
     return message["sender"].split("<")[-1].replace(">", "").strip()
