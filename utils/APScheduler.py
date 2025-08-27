@@ -13,7 +13,7 @@ async def scheduled_email_check():
 
     print("🔍 Checking for new emails...")
     service = get_gmail_service()
-    emails = fetch_recent_emails(
+    emails = await fetch_recent_emails(
         service, max_results=2
     )  # Returns list of {subject, sender, snippet, id}
     for email in emails:

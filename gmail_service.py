@@ -3,8 +3,14 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 import base64
+from motor.motor_asyncio import AsyncIOMotorClient
 from email.mime.text import MIMEText
 import os
+
+client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
+db = client["pinggenius"]
+meta_collection = db["gmail_meta"]  # store sync metadata
+
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.modify",
@@ -33,19 +39,22 @@ def get_gmail_service():
     return build("gmail", "v1", credentials=creds)
 
 
-def fetch_recent_emails(service, max_results: int):
+from motor.motor_asyncio import AsyncIOMotorClient
+
+# Mongo connection
+
+
+async def fetch_recent_emails(service, max_results):
     """
-    Fetch the most recent unread emails from Gmail.
-
-    Args:
-        service: Authenticated Gmail API service instance.
-        max_results (int): Maximum number of emails to fetch.
-
-    Returns:
-        list[dict]: List of emails with id, subject, sender, and snippet.
+    Fetch the most recent emails from Gmail, avoiding duplicates
+    using Gmail's historyId stored in MongoDB.
     """
     try:
-        # Fetch unread messages only
+        # Get last stored historyId
+        last_meta = await meta_collection.find_one({"_id": "gmail_tracker"})
+        last_history_id = last_meta.get("last_history_id") if last_meta else None
+
+        # Fetch messages (primary inbox only)
         results = (
             service.users()
             .messages()
@@ -55,6 +64,7 @@ def fetch_recent_emails(service, max_results: int):
 
         messages = results.get("messages", [])
         emails = []
+        latest_history_id = last_history_id  # keep track of highest seen
 
         for msg in messages:
             msg_data = (
@@ -74,9 +84,11 @@ def fetch_recent_emails(service, max_results: int):
                 for h in msg_data.get("payload", {}).get("headers", [])
             }
 
-            # Get Gmail historyId to track latest state
-            history_id = msg_data.get("historyId")
-            
+            history_id = int(msg_data.get("historyId", 0))
+
+            # Skip already processed emails
+            if last_history_id and history_id <= int(last_history_id):
+                continue
 
             emails.append(
                 {
@@ -84,13 +96,25 @@ def fetch_recent_emails(service, max_results: int):
                     "subject": headers.get("Subject", ""),
                     "sender": headers.get("From", ""),
                     "snippet": msg_data.get("snippet", ""),
+                    "historyId": history_id,
                 }
+            )
+
+            # Track latest historyId
+            if not latest_history_id or history_id > int(latest_history_id):
+                latest_history_id = history_id
+
+        # Update Mongo with latest historyId (only if we found new emails)
+        if latest_history_id and latest_history_id != last_history_id:
+            await meta_collection.update_one(
+                {"_id": "gmail_tracker"},
+                {"$set": {"last_history_id": latest_history_id}},
+                upsert=True,
             )
 
         return emails
 
     except Exception as e:
-        # Log and raise in production
         raise RuntimeError(f"Error fetching recent emails: {e}")
 
 
