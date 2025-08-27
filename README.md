@@ -22,7 +22,7 @@ A backend service for PingGenius built with FastAPI.
 
 1. Clone the repository
 ```bash
-git clone []
+git clone [https://github.com/hasnainXdev/pinggenius_backend]
 ```
 
 2. Create and activate virtual environment
@@ -45,3 +45,7 @@ uvicorn main:app --reload
 ## API Documentation
 
 Visit `http://localhost:8000/docs` for interactive API documentation.
+
+## License
+
+MIT
