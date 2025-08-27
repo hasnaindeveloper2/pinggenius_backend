@@ -22,7 +22,7 @@ A backend service for PingGenius built with FastAPI.
 
 1. Clone the repository
 ```bash
-git clone [repository-url]
+git clone [https://github.com/hasnainXdev/pinggenius_backend]
 ```
 
 2. Create and activate virtual environment
