@@ -4,12 +4,14 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 import base64
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import MongoClient
 from email.mime.text import MIMEText
 import os
 
-client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
+MONGO_URL = os.getenv("MONGO_URL")
+client = MongoClient(MONGO_URL)
 db = client["pinggenius"]
-meta_collection = db["gmail_meta"]  # store sync metadata
+meta_collection = db["gmail_meta"]
 
 
 SCOPES = [
@@ -44,6 +46,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 # Mongo connection
 
 
+# ---------- Fetch Latest Email using Gmail API ----------
 async def fetch_recent_emails(service, max_results):
     """
     Fetch the most recent emails from Gmail, avoiding duplicates
@@ -109,7 +112,6 @@ async def fetch_recent_emails(service, max_results):
             await meta_collection.update_one(
                 {"_id": "gmail_tracker"},
                 {"$set": {"last_history_id": latest_history_id}},
-                upsert=True,
             )
 
         return emails
