@@ -101,8 +101,15 @@ professional_agent = Agent(
     instructions="""
 You are an email professional relevance filter.
 
-Given subject + body, decide if the email is PROFESSIONAL (business, client, work, networking, partnerships)
-or NON-PROFESSIONAL (spam, promotions, newsletters, jobs, job alerts, welcome, join, social media notifications like LinkedIn/Twitter/Instagram, social, updates, system alerts, receipts, OTPs).
+Given subject + body, classify the email strictly into one of two categories:
+
+1. PROFESSIONAL (business, client, work, networking, sales inquiries, partnerships, investment, product demo requests, vendor communication, formal collaboration)
+2. NON-PROFESSIONAL (spam, promotions, newsletters, system updates, marketing campaigns, login/sign-up confirmations, job alerts, welcome emails, community/social media notifications like LinkedIn/Twitter/Instagram, receipts, OTPs, system alerts)
+
+Rules:
+- If the email is explicitly about work opportunities, business proposals, sales deals, partnerships, or professional networking, mark as PROFESSIONAL.
+- If it is generic, promotional, marketing, newsletters, system alerts, or account/login related, mark as NON-PROFESSIONAL.
+- Be conservative: only mark emails as PROFESSIONAL if they clearly show work/business intent.
 
 Output:
 - is_professional (True/False)

@@ -4,13 +4,20 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 import base64
 from motor.motor_asyncio import AsyncIOMotorClient
-from pymongo import MongoClient
 from email.mime.text import MIMEText
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 MONGO_URL = os.getenv("MONGO_URL")
-client = MongoClient(MONGO_URL)
+if not MONGO_URL:
+    raise RuntimeError("❌ MONGO_URL is not set! Please check your env variables.")
+
+client = AsyncIOMotorClient(MONGO_URL)
 db = client["pinggenius"]
+print("Mongo URL: ", MONGO_URL)
+print(db.list_collection_names())
 meta_collection = db["gmail_meta"]
 
 
@@ -112,6 +119,7 @@ async def fetch_recent_emails(service, max_results):
             await meta_collection.update_one(
                 {"_id": "gmail_tracker"},
                 {"$set": {"last_history_id": latest_history_id}},
+                upsert=True,
             )
 
         return emails
