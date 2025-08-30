@@ -8,7 +8,7 @@ from api.v1 import list_contacts
 from api.v1 import hard_emails
 
 # from gmail_service import fetch_recent_emails, get_gmail_service
-from utils.APScheduler import start_scheduler
+from utils.APScheduler import start_scheduler, start_user_scheduler, stop_user_scheduler
 
 app = FastAPI()
 
@@ -27,19 +27,13 @@ app.include_router(list_contacts.router, prefix="/api/v1")
 app.include_router(hard_emails.router, prefix="/api/v1")
 
 
-# -------- fetched latest emails from gmail --------
+@app.post("/start-email-job/{user_id}")
+def start_job(user_id: str, interval: int = 30):
+    start_user_scheduler(user_id, interval)
+    return {"status": "started", "user_id": user_id, "interval": interval}
 
 
-@app.on_event("startup")
-async def startup_event():
-    start_scheduler()
-
-
-# @app.get("/latest-emails")
-# def test_gmail():
-#     try:
-#         service = get_gmail_service()
-#         emails = fetch_recent_emails(service)
-#         return {"count": len(emails), "emails": emails}
-#     except Exception as e:
-#         return {"error": str(e)}
+@app.post("/stop-email-job/{user_id}")
+def stop_job(user_id: str):
+    stop_user_scheduler(user_id)
+    return {"status": "stopped", "user_id": user_id}
