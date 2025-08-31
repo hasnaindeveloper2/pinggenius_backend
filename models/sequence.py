@@ -8,13 +8,7 @@ db = client["pinggenius"]
 sequences = db["sequences"]
 
 
-async def save_sequence(contact_id: str, email_body: str):
-    sequence_doc = {
-        "contact_id": contact_id,
-        "email_body": email_body,
-        "step": 1,
-        "sent_at": datetime.utcnow(),
-        "next_send_at": datetime.utcnow() + timedelta(days=3),
-        "status": "sent",
-    }
+async def save_sequence(sequence_doc):
+    if not sequence_doc.get("contact_id") or not sequence_doc.get("email_body"):
+        return
     await sequences.insert_one(sequence_doc)
