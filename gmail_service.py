@@ -16,8 +16,6 @@ if not MONGO_URL:
 
 client = AsyncIOMotorClient(MONGO_URL)
 db = client["pinggenius"]
-print("Mongo URL: ", MONGO_URL)
-print(db.list_collection_names())
 meta_collection = db["gmail_meta"]
 
 
@@ -63,6 +61,7 @@ async def fetch_recent_emails(service, max_results):
         # Get last stored historyId
         last_meta = await meta_collection.find_one({"_id": "gmail_tracker"})
         last_history_id = last_meta.get("last_history_id") if last_meta else None
+        seen_ids = set(last_meta.get("processed_ids", [])) if last_meta else set()
 
         # Fetch messages (primary inbox only)
         results = (
@@ -74,9 +73,13 @@ async def fetch_recent_emails(service, max_results):
 
         messages = results.get("messages", [])
         emails = []
+        new_ids = set()
         latest_history_id = last_history_id  # keep track of highest seen
 
         for msg in messages:
+            if msg["id"] in seen_ids:  # 👈 skip already processed
+                continue
+
             msg_data = (
                 service.users()
                 .messages()
@@ -96,8 +99,8 @@ async def fetch_recent_emails(service, max_results):
 
             history_id = int(msg_data.get("historyId", 0))
 
-            # Skip already processed emails
-            if last_history_id and history_id <= int(last_history_id):
+            # Skip old history
+            if history_id <= last_history_id:
                 continue
 
             emails.append(
@@ -110,15 +113,17 @@ async def fetch_recent_emails(service, max_results):
                 }
             )
 
-            # Track latest historyId
-            if not latest_history_id or history_id > int(latest_history_id):
-                latest_history_id = history_id
+            new_ids.add(msg["id"])
+            latest_history_id = max(latest_history_id, history_id)
 
         # Update Mongo with latest historyId (only if we found new emails)
-        if latest_history_id and latest_history_id != last_history_id:
+        if new_ids:
             await meta_collection.update_one(
                 {"_id": "gmail_tracker"},
-                {"$set": {"last_history_id": latest_history_id}},
+                {
+                    "$set": {"last_history_id": latest_history_id},
+                    "$addToSet": {"processed_ids": {"$each": list(new_ids)}}
+                },
                 upsert=True,
             )
 

@@ -8,7 +8,7 @@ from api.v1 import list_contacts
 from api.v1 import hard_emails
 
 # from gmail_service import fetch_recent_emails, get_gmail_service
-from utils.APScheduler import start_scheduler, start_user_scheduler, stop_user_scheduler
+from utils.APScheduler import start_user_scheduler, stop_user_scheduler
 
 app = FastAPI()
 

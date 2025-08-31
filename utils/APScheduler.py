@@ -19,7 +19,7 @@ async def _process_emails(user_id: str):
             return
 
         for email in emails:
-            result = await process_email(email)
+            result = await process_email(email, user_id)
             print(f"[User {user_id}] {result}")
             print(email)
 
@@ -46,7 +46,7 @@ def start_user_scheduler(user_id: str, interval_seconds: int = 30):
         seconds=interval_seconds,
         args=[user_id],
         id=job_id,
-        max_instances=1
+        max_instances=1,
     )
     print(f"✅ Started scheduler for {user_id} every {interval_seconds}s")
 

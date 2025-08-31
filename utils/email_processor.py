@@ -8,12 +8,14 @@ from agent_core import run_email_agent
 from models.hard_email import save_hard_email_to_db
 
 
-async def process_email(email):
+async def process_email(email, user_id):
     """Process a single email dict {subject, sender, snippet, id, user_id}."""
     service = get_gmail_service()
-    input_text = f"Subject: {email['subject']}\nFrom: {email['sender']}\n\n Body: {email['snippet']}\n\n id: 689210e73ab6579e73ad5704"
+    input_text = f"Subject: {email['subject']}\nFrom: {email['sender']}\n\n Body: {email['snippet']}\n\n id: {user_id}"
 
     result = await run_email_agent(input_text)
+    if not result or not isinstance(result, str):
+        print("❌ Invalid agent response")
     decision = result.lower()
 
     if decision == "junk":
@@ -23,7 +25,7 @@ async def process_email(email):
     elif decision.startswith("easy:"):
         reply = decision.replace("easy:", "").strip()
         to_email = email["sender"].split("<")[-1].replace(">", "").strip()
-        send_email_reply(service, to_email, email["subject"], reply.upper())
+        send_email_reply(service, to_email, email["subject"], reply)
         marked_as_read(service, email["id"])
         return {
             "status": "easy",

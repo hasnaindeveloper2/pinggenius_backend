@@ -103,7 +103,7 @@ You are an email professional relevance filter.
 
 Given subject + body, classify the email strictly into one of two categories:
 
-1. PROFESSIONAL (business, client, work, networking, sales inquiries, partnerships, investment, product demo requests, vendor communication, formal collaboration)
+1. PROFESSIONAL (business, client, work, networking, sales inquiries, partnerships, investment, product demo requests, vendor communication, formal collaboration, simple questions (e.g. greetings))
 2. NON-PROFESSIONAL (spam, promotions, newsletters, system updates, marketing campaigns, login/sign-up confirmations, job alerts, welcome emails, community/social media notifications like LinkedIn/Twitter/Instagram, receipts, OTPs, system alerts)
 
 Rules:
@@ -134,7 +134,7 @@ easy_response_agent = Agent(
 You are an email complexity detector.
 
 Given an email's subject and body, decide if it's an **easy response**. That means:
-- It's quick to reply (status update, scheduling, thanks, minor question)
+- It's quick to reply (status update, scheduling, thanks, simple question e.g. greetings)
 - Doesn't need deep thought, long writing, or research
 
 If yes → is_easy = True
@@ -197,6 +197,7 @@ Email Details:
 Instructions:
 Write a polite and personalized reply addressed to {name}.
 - Match tone: Casual → Friendly, Business → Formal, Funny → Witty but professional.
+- your reply should be title case professionally.
 - Always include a greeting using {name}.
 - End with:  
 best regards or best,  
@@ -234,7 +235,7 @@ async def run_email_agent(input_text: str) -> str:
         # replace subject: word with empty
         final_output = result.final_output.replace("Subject:", "")
 
-        print(final_output.title())
+        print(final_output)
         return final_output
     except OutputGuardrailTripwireTriggered:
         print("guardrail was triggered — not a valid reply")
