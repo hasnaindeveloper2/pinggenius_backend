@@ -21,7 +21,7 @@ async def generate_sequence(data: GenerateSequenceRequest):
         if not contact:
             raise HTTPException(status_code=404, detail="Contact not found")
 
-            # ---- Use your agent to generate follow-ups ----
+            # ---- Using agent to generate follow-ups ----
         followups = await generate_followups(
             contact, data.email_body, num=len(data.schedule_days)
         )
