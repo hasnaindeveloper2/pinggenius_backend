@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from models.sequence import save_sequence
 from models.contact import get_contact_by_id
 from utils.followup_generator import generate_followups
+from bson import ObjectId
 
 router = APIRouter(tags=["Sequence"])
 
@@ -21,10 +22,11 @@ async def generate_sequence(data: GenerateSequenceRequest):
         if not contact:
             raise HTTPException(status_code=404, detail="Contact not found")
 
-            # ---- Using agent to generate follow-ups ----
+        # ---- Using agent to generate follow-ups ----
         followups = await generate_followups(
             contact, data.email_body, num=len(data.schedule_days)
         )
+
         if not followups:
             raise HTTPException(status_code=500, detail="Failed to generate follow-ups")
 
@@ -42,7 +44,7 @@ async def generate_sequence(data: GenerateSequenceRequest):
                 "next_send_at": now + timedelta(days=day),
                 "status": "pending",
             }
-            await save_sequence(doc)
+            await save_sequence(dict(doc))
             sequence_docs.append(doc)
 
         return {

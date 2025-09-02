@@ -6,11 +6,13 @@ from gmail_service import get_gmail_service, send_email_reply
 from utils.extract_subject import extract_subject
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime
+from bson import ObjectId
 import pytz
 
 router = APIRouter(tags=["Sequence"])
 scheduler = AsyncIOScheduler(timezone=pytz.UTC)
 scheduler.start()
+
 
 # ---------- Schema ----------
 class SequenceRequest(BaseModel):
@@ -28,12 +30,14 @@ async def send_scheduled_email(contact_id: str, email_body: str):
     to_email = contact.get("email")
     subject = extract_subject(email_body)
 
+    if email_body.startswith("Subject:"):
+        email_body = email_body.replace("Subject:", "").strip()
     send_email_reply(service, to_email, subject, email_body)
 
     # Mark sequence step as sent
     await sequences.update_one(
         {"contact_id": contact_id, "email_body": email_body},
-        {"$set": {"sent_at": datetime.utcnow(), "status": "sent"}}
+        {"$set": {"sent_at": datetime.utcnow(), "status": "sent"}},
     )
 
 
@@ -41,7 +45,8 @@ async def send_scheduled_email(contact_id: str, email_body: str):
 async def start_sequence(data: SequenceRequest):
     try:
         service = get_gmail_service()
-        contact = await get_contact_by_id(data.contact_id)
+        contact_id = ObjectId(data.contact_id)
+        contact = await get_contact_by_id(contact_id)
 
         if not contact:
             raise HTTPException(status_code=404, detail="Contact not found")
@@ -51,6 +56,10 @@ async def start_sequence(data: SequenceRequest):
         to_email = contact["email"]
         subject = extract_subject(data.email_body)
 
+        if data.email_body.startswith("Subject:"):
+            # remove the entire subject line from email body
+            data.email_body = data.email_body.replace("Subject:", "").strip()
+
         # Send first email immediately
         send_email_reply(service, to_email, subject, data.email_body)
 
@@ -58,20 +67,21 @@ async def start_sequence(data: SequenceRequest):
         await update_contact_status(contact_id=data.contact_id, status="inSequence")
 
         # Save this step in DB
-        await save_sequence({
-            "contact_id": data.contact_id,
-            "email_body": data.email_body,
-            "step": 1,
-            "sent_at": datetime.utcnow(),
-            "next_send_at": None,
-            "status": "sent"
-        })
+        await save_sequence(
+            {
+                "contact_id": data.contact_id,
+                "email_body": data.email_body,
+                "step": 1,
+                "sent_at": datetime.utcnow(),
+                "next_send_at": None,
+                "status": "sent",
+            }
+        )
 
         # -------- Schedule Remaining Steps --------
-        sequence_steps = await sequences.find({
-            "contact_id": data.contact_id,
-            "status": "pending"
-        }).to_list(None)
+        sequence_steps = await sequences.find(
+            {"contact_id": data.contact_id, "status": "pending"}
+        ).to_list(None)
 
         for step in sequence_steps:
             run_date = step["next_send_at"]
@@ -80,8 +90,9 @@ async def start_sequence(data: SequenceRequest):
                 "date",
                 run_date=run_date,
                 args=[data.contact_id, step["email_body"]],
-                id=f"seq_{data.contact_id}_{step['step']}"
+                id=f"seq_{data.contact_id}_{step['step']}",
             )
+            print(f"Scheduled follow-up email for {step['step']} on {run_date}")
 
         return {"message": "Sequence started. First email sent, follow-ups scheduled."}
 

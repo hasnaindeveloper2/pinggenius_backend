@@ -20,7 +20,7 @@ async def save_contact_to_db(contact_data: dict):
 
 
 # -------- Get contact by ID --------
-async def get_contact_by_id(contact_id: str):
+async def get_contact_by_id(contact_id):
     try:
         object_id = ObjectId(contact_id)
     except InvalidId:
