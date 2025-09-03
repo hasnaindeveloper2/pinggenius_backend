@@ -7,6 +7,7 @@ from api.v1 import start_sequence
 from api.v1 import list_contacts
 from api.v1 import generate_sequence
 from api.v1 import hard_emails
+from api.v1 import stop_sequence
 
 # from gmail_service import fetch_recent_emails, get_gmail_service
 from utils.APScheduler import start_user_scheduler, stop_user_scheduler
@@ -25,12 +26,13 @@ app.include_router(generate_email.router, prefix="/api/v1")
 app.include_router(save_contact.router, prefix="/api/v1")
 app.include_router(start_sequence.router, prefix="/api/v1")
 app.include_router(list_contacts.router, prefix="/api/v1")
+app.include_router(stop_sequence.router, prefix="/api/v1")
 app.include_router(generate_sequence.router, prefix="/api/v1")
 app.include_router(hard_emails.router, prefix="/api/v1")
 
 
 @app.post("/start-email-job/{user_id}")
-def start_job(user_id: str, interval: int = 30):
+def start_job(user_id: str, interval: int = 60):
     start_user_scheduler(user_id, interval)
     return {"status": "started", "user_id": user_id, "interval": interval}
 

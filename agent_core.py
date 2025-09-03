@@ -5,7 +5,6 @@ from openai import AsyncOpenAI
 from agents import (
     Agent,
     OpenAIChatCompletionsModel,
-    RunConfig,
     Runner,
     function_tool,
     output_guardrail,

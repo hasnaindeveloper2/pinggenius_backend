@@ -33,7 +33,7 @@ async def scheduled_email_check(user_id: str):
 
 
 # ✅ Start job for a user
-def start_user_scheduler(user_id: str, interval_seconds: int = 30):
+def start_user_scheduler(user_id: str, interval_seconds):
     job_id = f"user_{user_id}"
     # Prevent duplicate job for same user
     if scheduler.get_job(job_id):
