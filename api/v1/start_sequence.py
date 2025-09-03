@@ -7,11 +7,9 @@ from utils.extract_subject import extract_subject
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime
 from bson import ObjectId
-import pytz
+from utils.scheduler import scheduler
 
 router = APIRouter(tags=["Sequence"])
-scheduler = AsyncIOScheduler(timezone=pytz.UTC)
-scheduler.start()
 
 
 # ---------- Schema ----------
@@ -94,7 +92,7 @@ async def start_sequence(data: SequenceRequest):
             )
             print(f"Scheduled follow-up email for {step['step']} on {run_date}")
 
-        return {"message": "Sequence started. First email sent, follow-ups scheduled."}
+        return {"message": f"Sequence started. First email sent, follow-ups scheduled for {step['step']} on {run_date}"}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
