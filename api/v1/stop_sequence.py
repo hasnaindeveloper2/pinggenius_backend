@@ -28,6 +28,8 @@ async def stop_sequence(id: StopSequenceRequest):
                     {"contact_id": id.contact_id, "step": step},
                     {"$set": {"status": "cancelled"}},
                 )
+                
+                # TODO: Update contact status to 'InCompleted' if job is stopped before all steps are sent
 
         return {
             "message": f"Cancelled steps {cancelled_steps} for contact {id.contact_id}"
