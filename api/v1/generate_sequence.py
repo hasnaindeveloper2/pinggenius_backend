@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from models.sequence import save_sequence
 from models.contact import get_contact_by_id
 from utils.followup_generator import generate_followups
+from models.contact import contacts
 from bson import ObjectId
 
 router = APIRouter(tags=["Sequence"])
@@ -45,6 +46,7 @@ async def generate_sequence(data: GenerateSequenceRequest):
                 "status": "pending",
             }
             await save_sequence(dict(doc))
+            await contacts.find_one_and_update({"_id": data.contact_id}, {"$set": {"status":"inSequence"}})
             sequence_docs.append(doc)
 
         return {

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from models.sequence import save_sequence, sequences
-from models.contact import get_contact_by_id, update_contact_status
+from models.contact import get_contact_by_id, update_contact_status, contacts
 from gmail_service import get_gmail_service, send_email_reply
 from utils.extract_subject import extract_subject
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -29,7 +29,10 @@ async def send_scheduled_email(contact_id: str, email_body: str):
     subject = extract_subject(email_body)
 
     if email_body.startswith("Subject:"):
-        email_body = email_body.replace("Subject:", "").strip()
+        # split only on first newline
+        _, body = email_body.split("\n", 1)
+        email_body = body.strip()
+
     send_email_reply(service, to_email, subject, email_body)
 
     # Mark sequence step as sent
@@ -55,8 +58,9 @@ async def start_sequence(data: SequenceRequest):
         subject = extract_subject(data.email_body)
 
         if data.email_body.startswith("Subject:"):
-            # remove the entire subject line from email body
-            data.email_body = data.email_body.replace("Subject:", "").strip()
+            # split only on first newline
+            _, body = data.email_body.split("\n", 1)
+            data.email_body = body.strip()
 
         # Send first email immediately
         send_email_reply(service, to_email, subject, data.email_body)
@@ -92,7 +96,9 @@ async def start_sequence(data: SequenceRequest):
             )
             print(f"Scheduled follow-up email for {step['step']} on {run_date}")
 
-        return {"message": f"Sequence started. First email sent, follow-ups scheduled for {step['step']} on {run_date}"}
+        return {
+            "message": f"Sequence started. First email sent, follow-ups scheduled for {step['step']} on {run_date}"
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
