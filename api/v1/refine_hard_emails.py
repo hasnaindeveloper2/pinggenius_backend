@@ -1,18 +1,26 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from bson import ObjectId
-from typing import Optional
+from models.hard_email import hard_emails
+from gmail_service import get_gmail_service, send_email_reply
+from utils.hard_email_replyer import generate_reply
+import os
+from motor.motor_asyncio import AsyncIOMotorClient
+import re
 
-from models.hard_email import hard_emails  # your Mongo collection
-from gmail_service import get_gmail_service, send_email_reply  # Gmail API utility
-from app.email_agent import generate_reply  # LLM email agent
 
-router = APIRouter()
+MONGO_URL = os.getenv("MONGO_URL")
+client = AsyncIOMotorClient(MONGO_URL)
+db = client["test"]
+users = db["waitlistsusers"]
+
+router = APIRouter(tags=["Hard Email"])
 
 
 class RefineEmailRequest(BaseModel):
-    email_id: str  # id of the hard email saved in db
-    refined_body: str  # user updated/refined version of email
+    user_id: str
+    email_id: str
+    refined_body: str
 
 
 @router.post("/resend-hard-email")
@@ -24,26 +32,33 @@ async def resend_hard_email(req: RefineEmailRequest):
     if not email_doc:
         raise HTTPException(status_code=404, detail="Hard email not found")
 
-    sender = email_doc["from"]
-    subject = email_doc.get("subject", "Re: Your email")
+    user_data = await users.find_one({"_id": ObjectId(req.user_id)})
+
+    if not user_data:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    sender = email_doc.get("sender")
+    subject = email_doc.get("subject")
+    # extract sender's name
+    sender_name = sender.split("<")[0].strip()
 
     # 2. Drop refined email to AI Agent
     try:
-        refined_reply = await generate_reply(req.refined_body)
+        refined_reply = await generate_reply(
+            req.refined_body, user_data["username"], sender_name
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Email agent failed: {str(e)}")
 
     # 3. Send auto reply immediately via Gmail API
     try:
         service = get_gmail_service()
-        
-        if "<" in sender and ">" in sender:
-          clean_sender = sender.split("<")[1].replace(">", "").strip()
-        else:
-            # just in case the email is not in the format "Name <email>"
-            clean_sender = sender.strip()
 
-        await send_email_reply(service, clean_sender, subject, refined_reply)
+        match = re.search(r"<(.+?)>", sender)
+        # Extract the email address
+        clean_sender = match.group(1) if match else sender.strip()
+
+        send_email_reply(service, clean_sender, subject, refined_reply)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gmail send failed: {str(e)}")
 
@@ -53,4 +68,4 @@ async def resend_hard_email(req: RefineEmailRequest):
         {"$set": {"status": "replied", "snippet": refined_reply}},
     )
 
-    return {"message": "Hard email successfully resent", "reply": refined_reply}
+    return {"message": "Hard email successfully re-send", "reply": refined_reply}
