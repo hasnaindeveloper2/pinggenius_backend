@@ -1,3 +1,4 @@
+import asyncio
 from agents import (
     Agent,
     Runner,
@@ -39,18 +40,22 @@ class EmailReplyOutputCheck(BaseModel):
     reasoning: str
 
 
-email_reply_validation_agent = Agent(
+email_reply_validate = Agent(
     name="Email Reply Validation Agent",
-    instructions="""You are an expert email validator.
-    your job is to:
-    - Ensure the email reply is professional, concise, and polite.
-    - Ensure the reply directly addresses the main points of the original email.
-    - Ensure the tone is clear, respectful, and human-like.
-    
-    if the reply is appropriate, output:
-    is_valid_reply = True
-    else, output: is_valid_reply = False
-    """,
+    instructions="""You are a expert email validator
+Your job is to:
+- Ensure the email reply is professional, concise, and polite.
+- Ensure the reply directly addresses the main points of the original email.
+- Ensure the tone is clear, respectful, and human-like.
+- Ensure the reply ends with a warm closing such as 'Best,' or 'Best regards,'
+
+If the reply meets all of the above requirements, output:
+is_valid_reply = True
+
+If the reply fails to meet any of the requirements, output:
+is_valid_reply = False
+provide reasoning why it is not a valid reply.
+""",
     model=model,
     output_type=EmailReplyOutputCheck,
 )
@@ -62,7 +67,7 @@ async def email_reply_validation_guardrail(
     agent: Agent,
     input: str | list[TResponseInputItem],
 ) -> GuardrailFunctionOutput:
-    result = await Runner.run(email_reply_validation_agent, input, context=ctx.context)
+    result = await Runner.run(email_reply_validate, input, context=ctx.context)
     return GuardrailFunctionOutput(
         output_info=result.final_output,
         tripwire_triggered=not result.final_output.is_valid_reply,
@@ -81,7 +86,8 @@ Your job is to:
 - Keep the tone clear, respectful, and human-like.
 - End with a warm closing (e.g. "Best," "Best regards,") signed with the user's name.
 
-Output only the final email body content that can be sent immediately.""",
+    never guess always generate the email reply
+    """,
     model=model,
     output_guardrails=[email_reply_validation_guardrail],
 )
@@ -101,6 +107,9 @@ Draft the reply with:
 - A closing signed off with the user’s name (e.g. best or best regards): {your_name}
         """,
         )
+        print(result.final_output)
         return result.final_output
     except OutputGuardrailTripwireTriggered:
-        raise Exception("Guardrail triggered — not a valid reply.")
+        print("Guardrail triggered — not a valid reply.")
+        return "Guardrail triggered — not a valid reply."
+
