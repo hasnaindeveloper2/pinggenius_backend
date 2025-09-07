@@ -9,19 +9,18 @@ from agents import (
     OutputGuardrailTripwireTriggered,
     RunContextWrapper,
     TResponseInputItem,
+    enable_verbose_stdout_logging,
 )
 from openai import AsyncOpenAI
 from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
-from bson import ObjectId
-from motor.motor_asyncio import AsyncIOMotorClient
 import re
 from pydantic import BaseModel
 
 load_dotenv()
 set_tracing_disabled(disabled=True)
-
+# enable_verbose_stdout_logging()
 gemini_api_key = os.getenv("GEMINI_API_KEY")
 
 provider = AsyncOpenAI(
@@ -37,24 +36,26 @@ model = OpenAIChatCompletionsModel(
 
 class EmailReplyOutputCheck(BaseModel):
     is_valid_reply: bool
-    reasoning: str
 
 
 email_reply_validate = Agent(
     name="Email Reply Validation Agent",
-    instructions="""You are a expert email validator
-Your job is to:
-- Ensure the email reply is professional, concise, and polite.
-- Ensure the reply directly addresses the main points of the original email.
-- Ensure the tone is clear, respectful, and human-like.
-- Ensure the reply ends with a warm closing such as 'Best,' or 'Best regards,'
+    instructions="""
+You are an expert email reply validator.
 
-If the reply meets all of the above requirements, output:
-is_valid_reply = True
+Input:
+- reply_text
+- expected_sender_name
+- expected_signature_name
 
-If the reply fails to meet any of the requirements, output:
-is_valid_reply = False
-provide reasoning why it is not a valid reply.
+Set is_valid_reply = false if:
+1) not proper greeting (Hi/Hello/Dear)
+2) doesn't contain headers like "Subject:".
+3) not proper closing (Best, Best regards, Regards, Sincerely, Kind regards).
+4) no proper signature expected_signature_name in closing.
+7) Mentions that (e.g. okay im ready, etc)
+
+If all the above requirements meets, return: is_valid_reply -> true
 """,
     model=model,
     output_type=EmailReplyOutputCheck,
@@ -76,7 +77,7 @@ async def email_reply_validation_guardrail(
 
 reply_agent = Agent(
     name="Email Reply Agent",
-    instructions="""You are an expert email assistant. 
+    instructions="""You are an expert email replier. 
 The user provides a refined email draft. 
 Your job is to:
 - Transform it into a professional, concise, and polite reply matching the tone of the original email.
@@ -86,7 +87,7 @@ Your job is to:
 - Keep the tone clear, respectful, and human-like.
 - End with a warm closing (e.g. "Best," "Best regards,") signed with the user's name.
 
-    never guess always generate the email reply
+    never guess anything just always generate the email reply
     """,
     model=model,
     output_guardrails=[email_reply_validation_guardrail],
@@ -98,7 +99,7 @@ async def generate_reply(refined_body: str, your_name: str, sender_name: str) ->
         result = await Runner.run(
             reply_agent,
             input=f"""
-You are the professional email reply assistant.
+You are the professional email reply writer.
 
 The user has refined their draft.  
 Draft the reply with:
@@ -112,4 +113,3 @@ Draft the reply with:
     except OutputGuardrailTripwireTriggered:
         print("Guardrail triggered — not a valid reply.")
         return "Guardrail triggered — not a valid reply."
-
