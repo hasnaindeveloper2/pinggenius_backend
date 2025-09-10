@@ -15,9 +15,11 @@ if not MONGO_URL:
     raise RuntimeError("❌ MONGO_URL is not set! Please check your env variables.")
 
 client = AsyncIOMotorClient(MONGO_URL)
-db = client["pinggenius"]
+db = client["test"]
 meta_collection = db["gmail_meta"]
 
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.modify",
@@ -25,31 +27,26 @@ SCOPES = [
 ]
 
 
-def get_gmail_service():
-    creds = None
+def get_gmail_service(user: str):
+    # Fetch user refresh token from DB
+    user = client.users.find_one({"email": user_email})
+    if not user or "refresh_token" not in user:
+        raise Exception("No refresh token found for this user")
 
-    # Use JSON instead of pickle
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+    creds = Credentials(
+        None,  # no access token saved
+        refresh_token=user["refresh_token"],
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=GOOGLE_CLIENT_ID,
+        client_secret=GOOGLE_CLIENT_SECRET,
+        scopes=SCOPES
+    )
 
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-            creds = flow.run_local_server(port=0)
+    # Always refresh access token
+    creds.refresh(Request())
 
-        # Save as JSON, not pickle
-        with open("token.json", "w") as token:
-            token.write(creds.to_json())
-
+    # Return Gmail service
     return build("gmail", "v1", credentials=creds)
-
-
-from motor.motor_asyncio import AsyncIOMotorClient
-
-# Mongo connection
-
 
 # ---------- Fetch Latest Email using Gmail API ----------
 async def fetch_recent_emails(service, max_results):
@@ -122,7 +119,7 @@ async def fetch_recent_emails(service, max_results):
                 {"_id": "gmail_tracker"},
                 {
                     "$set": {"last_history_id": latest_history_id},
-                    "$addToSet": {"processed_ids": {"$each": list(new_ids)}}
+                    "$addToSet": {"processed_ids": {"$each": list(new_ids)}},
                 },
                 upsert=True,
             )
