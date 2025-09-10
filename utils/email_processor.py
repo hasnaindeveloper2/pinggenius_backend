@@ -9,8 +9,8 @@ from models.hard_email import save_hard_email_to_db
 
 
 async def process_email(email, user_id):
-    """Process a single email dict {subject, sender, snippet, id, user_id}."""
-    service = get_gmail_service()
+    """Process a single email dict {subject, sender, snippet, user_id}."""
+    service = await get_gmail_service(user_id)
     input_text = f"Subject: {email['subject']}\nFrom: {email['sender']}\n\n Body: {email['snippet']}\n\n id: {user_id}"
 
     result = await run_email_agent(input_text)

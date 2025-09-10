@@ -9,8 +9,6 @@ from api.v1 import generate_sequence
 from api.v1 import hard_emails
 from api.v1 import stop_sequence
 from api.v1 import refine_hard_emails
-
-# from gmail_service import fetch_recent_emails, get_gmail_service
 from utils.APScheduler import start_user_scheduler, stop_user_scheduler
 
 app = FastAPI()

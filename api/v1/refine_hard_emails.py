@@ -52,7 +52,7 @@ async def resend_hard_email(req: RefineEmailRequest):
 
     # 3. Send auto reply immediately via Gmail API
     try:
-        service = get_gmail_service()
+        service = await get_gmail_service(req.user_id)
 
         match = re.search(r"<(.+?)>", sender)
         # Extract the email address

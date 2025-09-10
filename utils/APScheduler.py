@@ -11,7 +11,7 @@ scheduler.start()
 async def _process_emails(user_id: str):
     try:
         print(f"🔍 Checking new emails for user {user_id}...")
-        service = get_gmail_service(user_id)  # per-user service
+        service = await get_gmail_service(user_id)  # per-user service
         emails = await fetch_recent_emails(service, max_results=5)
 
         if not emails:

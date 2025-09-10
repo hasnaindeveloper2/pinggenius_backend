@@ -23,9 +23,9 @@ SCOPES = [
 ]
 
 
-def get_gmail_service(user_id: str):
+async def get_gmail_service(user_id: str):
     # Fetch user refresh token from DB
-    user = users.find_one({"_id": user_id})
+    user = await users.find_one({"_id": user_id})
     if not user or "refresh_token" not in user:
         raise Exception("No refresh token found for this user")
 

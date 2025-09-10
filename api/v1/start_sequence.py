@@ -14,13 +14,14 @@ router = APIRouter(tags=["Sequence"])
 
 # ---------- Schema ----------
 class SequenceRequest(BaseModel):
+    user_id: str
     contact_id: str
     email_body: str
 
 
-async def send_scheduled_email(contact_id: str, email_body: str):
+async def send_scheduled_email(contact_id: str, email_body: str, user_id: str):
     """Helper for scheduled jobs"""
-    service = get_gmail_service()
+    service = await get_gmail_service(user_id)
     contact = await get_contact_by_id(contact_id)
     if not contact:
         return
@@ -45,7 +46,7 @@ async def send_scheduled_email(contact_id: str, email_body: str):
 @router.post("/start-sequence")
 async def start_sequence(data: SequenceRequest):
     try:
-        service = get_gmail_service()
+        service = await get_gmail_service(data.user_id)
         contact_id = ObjectId(data.contact_id)
         contact = await get_contact_by_id(contact_id)
 
