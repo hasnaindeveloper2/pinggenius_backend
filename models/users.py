@@ -3,5 +3,5 @@ import os
 
 MONGO_URL = os.getenv("MONGO_URL")
 client = AsyncIOMotorClient(MONGO_URL)
-db = client["pinggenius"]
+db = client["test"]
 users = db["users"]

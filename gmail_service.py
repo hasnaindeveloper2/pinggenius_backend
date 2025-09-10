@@ -7,15 +7,11 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from email.mime.text import MIMEText
 import os
 from dotenv import load_dotenv
+from database.mongo import db
+from models.users import users
 
 load_dotenv()
 
-MONGO_URL = os.getenv("MONGO_URL")
-if not MONGO_URL:
-    raise RuntimeError("❌ MONGO_URL is not set! Please check your env variables.")
-
-client = AsyncIOMotorClient(MONGO_URL)
-db = client["test"]
 meta_collection = db["gmail_meta"]
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
@@ -27,9 +23,9 @@ SCOPES = [
 ]
 
 
-def get_gmail_service(user: str):
+def get_gmail_service(user_id: str):
     # Fetch user refresh token from DB
-    user = client.users.find_one({"email": user_email})
+    user = users.find_one({"_id": user_id})
     if not user or "refresh_token" not in user:
         raise Exception("No refresh token found for this user")
 
@@ -39,7 +35,7 @@ def get_gmail_service(user: str):
         token_uri="https://oauth2.googleapis.com/token",
         client_id=GOOGLE_CLIENT_ID,
         client_secret=GOOGLE_CLIENT_SECRET,
-        scopes=SCOPES
+        scopes=SCOPES,
     )
 
     # Always refresh access token
@@ -47,6 +43,7 @@ def get_gmail_service(user: str):
 
     # Return Gmail service
     return build("gmail", "v1", credentials=creds)
+
 
 # ---------- Fetch Latest Email using Gmail API ----------
 async def fetch_recent_emails(service, max_results):

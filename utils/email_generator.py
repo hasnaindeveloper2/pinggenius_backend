@@ -14,16 +14,13 @@ from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
 from bson import ObjectId
-from motor.motor_asyncio import AsyncIOMotorClient
+from database.mongo import db
 import re
 
 load_dotenv()
 
 gemini_api_key = os.getenv("GEMINI_API_KEY")
 
-
-client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
-db = client["test"]
 users_collection = db["waitlistsusers"]
 
 provider = AsyncOpenAI(
