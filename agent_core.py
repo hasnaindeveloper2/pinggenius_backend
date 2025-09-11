@@ -183,7 +183,7 @@ async def generate_reply(subject: str, body: str, sender: str, id: str) -> str:
     mongo_id = ObjectId(id)
     user = await users_collection.find_one({"_id": mongo_id})
     your_name = (
-        user["username"] if user and "username" in user else "PingGenius Assistant"
+        user["name"] if user and "name" in user else "PingGenius Assistant"
     )
 
     your_name = re.sub(r"\d+", " ", your_name).strip()

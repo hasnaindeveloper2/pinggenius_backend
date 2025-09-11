@@ -20,7 +20,6 @@ async def _process_emails(user_id: str):
 
         for email in emails:
             result = await process_email(email, user_id)
-            print(f"[User {user_id}] {result}")
             print(email)
 
     except Exception as e:
