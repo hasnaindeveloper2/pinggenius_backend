@@ -5,6 +5,7 @@ from gmail_service import (
     marked_as_read,
 )
 from agent_core import run_email_agent
+from models.emails import save_email
 from models.hard_email import save_hard_email_to_db
 
 
@@ -27,10 +28,11 @@ async def process_email(email, user_id):
         to_email = email["sender"].split("<")[-1].replace(">", "").strip()
         send_email_reply(service, to_email, email["subject"], reply)
         marked_as_read(service, email["id"])
+        await save_email(user_id, email["subject"], to_email, reply, "easy")
         return {
             "status": "easy",
             "reply": reply,
-            "message": "Auto reply sent ✅ Email marked as read!",
+            "message": "Auto Reply Sent ✅ Email Marked as Read, Email stored!",
         }
 
     else:

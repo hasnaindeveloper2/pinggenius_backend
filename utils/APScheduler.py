@@ -12,7 +12,7 @@ async def _process_emails(user_id: str):
     try:
         print(f"🔍 Checking new emails for user {user_id}...")
         service = await get_gmail_service(user_id)  # per-user service
-        emails = await fetch_recent_emails(service, max_results=5)
+        emails = await fetch_recent_emails(service,user_id, max_results=5)
 
         if not emails:
             print(f"No new emails yet for {user_id}")
@@ -33,7 +33,7 @@ async def scheduled_email_check(user_id: str):
 
 
 # ✅ Start job for a user
-def start_user_scheduler(user_id: str, interval_seconds):
+def start_user_scheduler(user_id: str, interval_minutes: int):
     job_id = f"user_{user_id}"
     # Prevent duplicate job for same user
     if scheduler.get_job(job_id):
@@ -43,12 +43,12 @@ def start_user_scheduler(user_id: str, interval_seconds):
     scheduler.add_job(
         scheduled_email_check,
         "interval",
-        seconds=interval_seconds,
+        minutes=interval_minutes,
         args=[user_id],
         id=job_id,
         max_instances=1,
     )
-    print(f"✅ Started scheduler for {user_id} every {interval_seconds}s")
+    print(f"✅ Started scheduler for {user_id} every {interval_minutes} minutes")
 
 
 # ✅ Stop job for a user

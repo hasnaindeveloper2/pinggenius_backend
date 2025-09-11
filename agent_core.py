@@ -18,6 +18,7 @@ from pydantic import BaseModel
 import asyncio
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorClient
+from database.mongo import db
 import re
 
 # Load environment variables
@@ -26,9 +27,7 @@ gemini_api_key = os.getenv("GEMINI_API_KEY")
 
 set_tracing_disabled(disabled=True)
 
-client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
-db = client["test"]
-users_collection = db["waitlistsusers"]
+users_collection = db["users"]
 
 # Gemini client setup
 client = AsyncOpenAI(
@@ -86,9 +85,14 @@ async def validate_reply_output(
     input: str | list[TResponseInputItem],
 ) -> GuardrailFunctionOutput:
     result = await Runner.run(reply_guardrail_agent, input=input, context=ctx.context)
+    
+    out = result.final_output or ReplyValidatorOutput(
+        is_valid_reply=False, reasoning="empty output"
+    )
+    
     return GuardrailFunctionOutput(
-        output_info=result.final_output,
-        tripwire_triggered=not result.final_output.is_valid_reply,
+        output_info=out,
+        tripwire_triggered=not bool(out.is_valid_reply),
     )
 
 
@@ -102,7 +106,7 @@ You are an email professional relevance filter.
 
 Given subject + body, classify the email strictly into one of two categories:
 
-1. PROFESSIONAL (business, client, work, networking, sales inquiries, partnerships, investment, product demo requests, vendor communication, formal collaboration, simple questions (e.g. greetings))
+1. PROFESSIONAL (business, client, work, networking, sales inquiries, partnerships, investment, product demo requests, communication, formal collaboration, simple questions (e.g. greetings))
 2. NON-PROFESSIONAL (spam, promotions, newsletters, system updates, marketing campaigns, login/sign-up confirmations, job alerts, welcome emails, community/social media notifications like LinkedIn/Twitter/Instagram, receipts, OTPs, system alerts)
 
 Rules:
@@ -132,8 +136,7 @@ easy_response_agent = Agent(
     instructions="""
 You are an email complexity detector.
 
-Given an email's subject and body, decide if it's an **easy response**. That means:
-- It's quick to reply (status update, scheduling, thanks, simple question e.g. greetings)
+Given an email's subject and body, decide if it's an easy response. That means:
 - Doesn't need deep thought, long writing, or research
 
 If yes → is_easy = True
@@ -148,12 +151,14 @@ reasoning too (but optional).
 
 @function_tool
 async def is_easy_response(subject: str, body: str) -> bool:
-    input_prompt = f"Subject: {subject}\nBody: {body}"
+    safe_subject = subject or ""
+    safe_body = body or ""
+    input_prompt = f"Subject: {safe_subject}\nBody: {safe_body}"
     result = await Runner.run(
         easy_response_agent,
         input=input_prompt,
     )
-    return result.final_output.is_easy
+    return bool(result.final_output.is_easy)
 
 
 # 3. Reply generator

@@ -7,6 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from email.mime.text import MIMEText
 import os
 from dotenv import load_dotenv
+from bson import ObjectId
 from database.mongo import db
 from models.users import users
 
@@ -25,13 +26,19 @@ SCOPES = [
 
 async def get_gmail_service(user_id: str):
     # Fetch user refresh token from DB
-    user = await users.find_one({"_id": user_id})
-    if not user or "refresh_token" not in user:
+    id = ObjectId(user_id)
+    user = await users.find_one({"_id": id})
+    
+    if not user:
+        raise Exception(f"User {user_id} not found in DB")
+    
+    refresh_token = user.get("refresh_token")
+    if not refresh_token:
         raise Exception("No refresh token found for this user")
 
     creds = Credentials(
         None,  # no access token saved
-        refresh_token=user["refresh_token"],
+        refresh_token=refresh_token,
         token_uri="https://oauth2.googleapis.com/token",
         client_id=GOOGLE_CLIENT_ID,
         client_secret=GOOGLE_CLIENT_SECRET,
@@ -46,18 +53,17 @@ async def get_gmail_service(user_id: str):
 
 
 # ---------- Fetch Latest Email using Gmail API ----------
-async def fetch_recent_emails(service, max_results):
+async def fetch_recent_emails(service, user_id: str, max_results: int):
     """
-    Fetch the most recent emails from Gmail, avoiding duplicates
-    using Gmail's historyId stored in MongoDB.
+    Fetch the most recent emails for a specific tenant/user, avoiding duplicates
+    using a per-user Gmail historyId stored in MongoDB.
     """
     try:
-        # Get last stored historyId
-        last_meta = await meta_collection.find_one({"_id": "gmail_tracker"})
+        # Get last stored historyId for this user
+        last_meta = await meta_collection.find_one({"_id": f"gmail_tracker_{user_id}"})
         last_history_id = last_meta.get("last_history_id") if last_meta else None
         seen_ids = set(last_meta.get("processed_ids", [])) if last_meta else set()
 
-        # Fetch messages (primary inbox only)
         results = (
             service.users()
             .messages()
@@ -68,10 +74,10 @@ async def fetch_recent_emails(service, max_results):
         messages = results.get("messages", [])
         emails = []
         new_ids = set()
-        latest_history_id = last_history_id  # keep track of highest seen
+        latest_history_id = last_history_id or 0  # default to 0 if None
 
         for msg in messages:
-            if msg["id"] in seen_ids:  # 👈 skip already processed
+            if msg["id"] in seen_ids:
                 continue
 
             msg_data = (
@@ -93,8 +99,8 @@ async def fetch_recent_emails(service, max_results):
 
             history_id = int(msg_data.get("historyId", 0))
 
-            # Skip old history
-            if history_id <= last_history_id:
+            # If we have a last_history_id, skip older messages
+            if last_history_id is not None and history_id <= last_history_id:
                 continue
 
             emails.append(
@@ -107,13 +113,14 @@ async def fetch_recent_emails(service, max_results):
                 }
             )
 
+            # Add to seen IDs and track latest historyId
             new_ids.add(msg["id"])
             latest_history_id = max(latest_history_id, history_id)
 
-        # Update Mongo with latest historyId (only if we found new emails)
+        # Update Mongo with latest historyId and processed IDs per user
         if new_ids:
             await meta_collection.update_one(
-                {"_id": "gmail_tracker"},
+                {"_id": f"gmail_tracker_{user_id}"},
                 {
                     "$set": {"last_history_id": latest_history_id},
                     "$addToSet": {"processed_ids": {"$each": list(new_ids)}},

@@ -32,9 +32,9 @@ app.include_router(refine_hard_emails.router, prefix="/api/v1")
 
 
 @app.post("/start-email-job/{user_id}")
-def start_job(user_id: str, interval: int = 60):
-    start_user_scheduler(user_id, interval)
-    return {"status": "started", "user_id": user_id, "interval": interval}
+def start_job(user_id: str, interval_minutes: int):
+    start_user_scheduler(user_id, interval_minutes)
+    return {"status": "started", "user_id": user_id, "interval": interval_minutes}
 
 
 @app.post("/stop-email-job/{user_id}")
