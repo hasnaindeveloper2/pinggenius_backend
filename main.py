@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-
+from fastapi.middleware.cors import CORSMiddleware
 from api.v1 import analyze_email
 from api.v1 import generate_email
 from api.v1 import save_contact
@@ -12,6 +12,18 @@ from api.v1 import refine_hard_emails
 from utils.APScheduler import start_user_scheduler, stop_user_scheduler
 
 app = FastAPI()
+
+
+origins = ["http://localhost:3000", "https://pinggenius.vercel.app"]
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/")
