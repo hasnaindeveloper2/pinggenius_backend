@@ -1,11 +1,12 @@
 from datetime import datetime
 from utils.serializer import serialize_doc
 from database.mongo import db
+from bson import ObjectId
 
 hard_emails = db["hard_emails"]
 
 
-async def save_hard_email_to_db(email_data: dict, user_id):
+async def save_hard_email_to_db(email_data: dict, user_id: str):
     email_data["type"] = "inbound"
     email_data["source"] = "gmail"
     email_data["status"] = "hard"
@@ -14,8 +15,8 @@ async def save_hard_email_to_db(email_data: dict, user_id):
     await db.insert_one(email_data)
 
 
-async def get_all_hard_emails(user_id):
-    emails = await hard_emails.find({"_id": user_id, "status": "hard"}).to_list(
-        length=100
-    )
+async def get_all_hard_emails(user_id: str):
+    emails = await hard_emails.find(
+        {"_id": ObjectId(user_id), "status": "hard"}
+    ).to_list(length=100)
     return [serialize_doc(email) for email in emails]
