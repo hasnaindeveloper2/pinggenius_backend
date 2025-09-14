@@ -36,5 +36,5 @@ async def process_email(email, user_id):
         }
 
     else:
-        await save_hard_email_to_db(email)
+        await save_hard_email_to_db(email, user_id)
         return {"status": "hard", "message": "Email marked as hard and stored."}
