@@ -14,8 +14,8 @@ A backend service for PingGenius built with FastAPI.
 
 ### Prerequisites
 
-- Python 3.8+
-- pip
+- Python 3.11+
+- uv
 - virtualenv (recommended)
 
 ### Installation
@@ -28,7 +28,6 @@ git clone [https://github.com/hasnainXdev/pinggenius_backend]
 2. Create and activate virtual environment
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
 3. Install dependencies
@@ -45,7 +44,3 @@ uvicorn main:app --reload
 ## API Documentation
 
 Visit `http://localhost:8000/docs` for interactive API documentation.
-
-## License
-
-MIT
