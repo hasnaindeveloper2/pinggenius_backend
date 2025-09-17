@@ -12,7 +12,7 @@ async def _process_emails(user_id: str):
     try:
         print(f"🔍 Checking new emails for user {user_id}...")
         service = await get_gmail_service(user_id)  # per-user service
-        emails = await fetch_recent_emails(service,user_id, max_results=5)
+        emails = await fetch_recent_emails(service, user_id, max_results=5)
 
         if not emails:
             print(f"No new emails yet for {user_id}")
