@@ -12,7 +12,7 @@ from api.v1 import (
     stop_sequence,
     refine_hard_emails,
     list_all_email,
-    gamail_scheduler
+    gamail_scheduler,
 )
 
 app = FastAPI()
