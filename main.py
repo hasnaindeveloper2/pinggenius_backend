@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from utils.APScheduler import start_user_scheduler, stop_user_scheduler
 from api.v1 import (
     analyze_email,
     generate_email,

@@ -28,10 +28,10 @@ async def get_gmail_service(user_id: str):
     # Fetch user refresh token from DB
     id = ObjectId(user_id)
     user = await users.find_one({"_id": id})
-    
+
     if not user:
         raise Exception(f"User {user_id} not found in DB")
-    
+
     refresh_token = user.get("refresh_token")
     if not refresh_token:
         raise Exception("No refresh token found for this user")
