@@ -4,15 +4,19 @@ from utils.APScheduler import start_user_scheduler, stop_user_scheduler
 router = APIRouter(tags=["Scheduler"])
 
 
+class EmailJobRequest:
+    user_id: str
+    interval_minutes: int
+
 @router.post("/start-email-job")
-def start_job(user_id: str, interval_minutes: int = 5):
+def start_job(email_job: EmailJobRequest):
     """Starts a background job to check for new emails for a user at a specified interval."""
-    start_user_scheduler(user_id, interval_minutes)
-    return {"status": "started", "user_id": user_id, "interval": interval_minutes}
+    start_user_scheduler(email_job.user_id, email_job.interval_minutes)
+    return {"status": "started", "user_id": email_job.user_id, "interval": email_job.interval_minutes}
 
 
 @router.post("/stop-email-job")
-def stop_job(user_id: str):
+def stop_job(email_job: EmailJobRequest):
     """Stops the email checking job for a specific user."""
-    stop_user_scheduler(user_id)
-    return {"status": "stopped", "user_id": user_id}
+    stop_user_scheduler(email_job.user_id)
+    return {"status": "stopped", "user_id": email_job.user_id}
