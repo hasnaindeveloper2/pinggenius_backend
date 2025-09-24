@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.v1 import (
     analyze_email,
-    generate_email,
+    outreach_email,
     save_contact,
     start_sequence,
     list_contacts,
@@ -33,7 +33,7 @@ def read_root():
 
 # -------- Routers --------
 app.include_router(analyze_email.router, prefix="/api/v1")
-app.include_router(generate_email.router, prefix="/api/v1")
+app.include_router(outreach_email.router, prefix="/api/v1")
 app.include_router(save_contact.router, prefix="/api/v1")
 app.include_router(start_sequence.router, prefix="/api/v1")
 app.include_router(list_contacts.router, prefix="/api/v1")
