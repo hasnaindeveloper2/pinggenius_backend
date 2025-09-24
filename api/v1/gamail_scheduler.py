@@ -22,7 +22,7 @@ def start_job(email_job: EmailJobRequest):
 
 
 @router.post("/stop-email-job")
-def stop_job(email_job: EmailJobRequest):
+def stop_job(user_id: str):
     """Stops the email checking job for a specific user."""
-    stop_user_scheduler(email_job.user_id)
-    return {"status": "stopped", "user_id": email_job.user_id}
+    stop_user_scheduler(user_id)
+    return {"status": "stopped", "user_id": user_id}

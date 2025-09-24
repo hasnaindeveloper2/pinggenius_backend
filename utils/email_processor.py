@@ -7,34 +7,40 @@ from gmail_service import (
 from agent_core import run_email_agent
 from models.emails import save_email
 from models.hard_email import save_hard_email_to_db
+from fastapi import logger
+import asyncio
 
 
 async def process_email(email, user_id):
-    """Process a single email dict {subject, sender, snippet, user_id}."""
-    service = await get_gmail_service(user_id)
-    input_text = f"Subject: {email['subject']}\nFrom: {email['sender']}\n\n Body: {email['snippet']}\n\n id: {user_id}"
+    try:
+        if not email or "id" not in email:
+            raise ValueError("Invalid email payload")
 
-    result = await run_email_agent(input_text)
-    if not result or not isinstance(result, str):
-        print("❌ Invalid agent response")
-    decision = result.lower()
+        service = await get_gmail_service(user_id)
+        input_text = f"Subject: {email['subject']}\nFrom: {email['sender']}\n\nBody: {email.get('snippet','')}"
 
-    if decision == "junk":
-        move_to_trash(service, email["id"])
-        return {"status": "junk", "message": "Email trashed."}
+        result = await asyncio.wait_for(run_email_agent(input_text), timeout=30)
+        if not isinstance(result, str):
+            raise RuntimeError("Agent returned non-string")
 
-    elif decision.startswith("easy:"):
-        reply = decision.replace("easy:", "").strip()
-        to_email = email["sender"].split("<")[-1].replace(">", "").strip()
-        send_email_reply(service, to_email, email["subject"], reply)
-        marked_as_read(service, email["id"])
-        await save_email(user_id, email["subject"], to_email, reply, "easy")
-        return {
-            "status": "easy",
-            "reply": reply,
-            "message": "Auto Reply Sent ✅ Email Marked as Read, Email stored!",
-        }
+        decision = result.lower().strip()
+        if decision == "junk":
+            await move_to_trash(service, email["id"])
+            return {"status": "junk"}
 
-    else:
+        if decision.startswith("easy:"):
+            reply = decision.split("easy:", 1)[1].strip()
+            to_email = email["sender"].split("<")[-1].replace(">", "").strip()
+            await send_email_reply(service, to_email, email["subject"], reply)
+            await marked_as_read(service, email["id"])
+            await save_email(user_id, email["subject"], to_email, reply, "easy")
+            return {"status": "easy", "reply": reply}
+
         await save_hard_email_to_db(email, user_id)
-        return {"status": "hard", "message": "Email marked as hard and stored."}
+        return {"status": "hard"}
+
+    except Exception as e:
+        logger.exception(
+            "process_email failed for user %s email %s", user_id, email.get("id")
+        )
+        return {"status": "error", "message": str(e)}

@@ -19,7 +19,7 @@ async def _process_emails(user_id: str):
             return
 
         for email in emails:
-            result = await process_email(email, user_id)
+            await process_email(email, user_id)
             print(email)
 
     except Exception as e:
