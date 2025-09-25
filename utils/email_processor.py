@@ -31,6 +31,7 @@ async def process_email(email, user_id):
             move_to_trash(service, email["id"])
             # save junk email to db with a status of junk to future reference
             await save_email(user_id, email["subject"], email["sender"], "", "junk")
+            print("Email marked as junk and moved to trash and stored ✅")
             return {"status": "junk"}
 
         if decision.startswith("easy:"):
@@ -39,9 +40,11 @@ async def process_email(email, user_id):
             await send_email_reply(service, to_email, email["subject"], reply)
             await marked_as_read(service, email["id"])
             await save_email(user_id, email["subject"], to_email, reply, "easy")
+            print("Easy email replied and marked as read and stored ✅")
             return {"status": "easy", "reply": reply}
 
         await save_hard_email_to_db(email, user_id)
+        print("Email marked as hard and stored for manual review ✅")
         return {"status": "hard"}
 
     except Exception as e:

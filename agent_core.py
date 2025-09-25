@@ -8,7 +8,6 @@ from agents import (
     Runner,
     function_tool,
     output_guardrail,
-    OutputGuardrailTripwireTriggered,
     GuardrailFunctionOutput,
     RunContextWrapper,
     TResponseInputItem,
@@ -17,16 +16,13 @@ from agents import (
 from pydantic import BaseModel
 import asyncio
 from bson import ObjectId
-from motor.motor_asyncio import AsyncIOMotorClient
 from database.mongo import db
 import re
 
 # Load environment variables
 load_dotenv()
 gemini_api_key = os.getenv("GEMINI_API_KEY")
-
 set_tracing_disabled(disabled=True)
-
 users_collection = db["users"]
 
 # Gemini client setup
@@ -85,11 +81,11 @@ async def validate_reply_output(
     input: str | list[TResponseInputItem],
 ) -> GuardrailFunctionOutput:
     result = await Runner.run(reply_guardrail_agent, input=input, context=ctx.context)
-    
+
     out = result.final_output or ReplyValidatorOutput(
         is_valid_reply=False, reasoning="empty output"
     )
-    
+
     return GuardrailFunctionOutput(
         output_info=out,
         tripwire_triggered=not bool(out.is_valid_reply),
@@ -181,9 +177,7 @@ best regards,
 async def generate_reply(subject: str, body: str, sender: str, user_id: str) -> str:
     mongo_id = ObjectId(user_id)
     user = await users_collection.find_one({"_id": mongo_id})
-    your_name = (
-        user["name"] if user and "name" in user else "PingGenius Assistant"
-    )
+    your_name = user["name"] if user and "name" in user else "PingGenius Assistant"
 
     your_name = re.sub(r"\d+", " ", your_name).strip()
     name = extract_name(sender)
@@ -239,5 +233,5 @@ async def run_email_agent(input_text: str) -> str:
 
         print(final_output)
         return final_output
-    except OutputGuardrailTripwireTriggered:
-        print("guardrail was triggered — not a valid reply")
+    except Exception as e:
+        print("Error in run_email_agent:", str(e))
