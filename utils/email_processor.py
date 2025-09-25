@@ -37,11 +37,11 @@ async def process_email(email, user_id):
         if decision.startswith("easy:"):
             reply = decision.split("easy:", 1)[1].strip()
             to_email = email["sender"].split("<")[-1].replace(">", "").strip()
-            await send_email_reply(service, to_email, email["subject"], reply)
+            await send_email_reply(service, to_email, email["subject"], reply.title())
             await marked_as_read(service, email["id"])
-            await save_email(user_id, email["subject"], to_email, reply, "easy")
+            await save_email(user_id, email["subject"], to_email, reply.title(), "easy")
             print("Easy email replied and marked as read and stored ✅")
-            return {"status": "easy", "reply": reply}
+            return {"status": "easy", "reply": reply.title()}
 
         await save_hard_email_to_db(email, user_id)
         print("Email marked as hard and stored for manual review ✅")
@@ -52,3 +52,5 @@ async def process_email(email, user_id):
             "process_email failed for user %s email %s", user_id, email.get("id")
         )
         return {"status": "error", "message": str(e)}
+
+
