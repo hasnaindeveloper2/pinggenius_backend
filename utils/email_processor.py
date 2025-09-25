@@ -7,8 +7,10 @@ from gmail_service import (
 from agent_core import run_email_agent
 from models.emails import save_email
 from models.hard_email import save_hard_email_to_db
-from fastapi import logger
+import logging
 import asyncio
+
+logger = logging.getLogger(__name__)
 
 
 async def process_email(email, user_id):
@@ -17,15 +19,18 @@ async def process_email(email, user_id):
             raise ValueError("Invalid email payload")
 
         service = await get_gmail_service(user_id)
-        input_text = f"Subject: {email['subject']}\nFrom: {email['sender']}\n\nBody: {email.get('snippet','')}"
+        input_text = f"Subject: {email['subject']}\nFrom: {email['sender']}\n\nBody: {email.get('snippet','')} user_id:{user_id}"
 
-        result = await asyncio.wait_for(run_email_agent(input_text), timeout=30)
+        result = await run_email_agent(input_text)
         if not isinstance(result, str):
+            print("⚠️ Agent returned:", repr(result))
             raise RuntimeError("Agent returned non-string")
 
         decision = result.lower().strip()
         if decision == "junk":
-            await move_to_trash(service, email["id"])
+            move_to_trash(service, email["id"])
+            # save junk email to db with a status of junk to future reference
+            await save_email(user_id, email["subject"], email["sender"], "", "junk")
             return {"status": "junk"}
 
         if decision.startswith("easy:"):

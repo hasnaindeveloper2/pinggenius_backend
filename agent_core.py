@@ -106,17 +106,15 @@ You are an email professional relevance filter.
 
 Given subject + body, classify the email strictly into one of two categories:
 
-1. PROFESSIONAL (business, client, work, networking, sales inquiries, partnerships, investment, product demo requests, communication, formal collaboration, simple questions (e.g. greetings))
+1. PROFESSIONAL (business, client, work, networking, sales inquiries, partnerships, product demo, communication, formal collaboration, simple questions (e.g. greetings, scheduling meetings, live sessions)
 2. NON-PROFESSIONAL (spam, promotions, newsletters, system updates, marketing campaigns, login/sign-up confirmations, job alerts, welcome emails, community/social media notifications like LinkedIn/Twitter/Instagram, receipts, OTPs, system alerts)
 
 Rules:
-- If the email is explicitly about work opportunities, business proposals, sales deals, partnerships, or professional networking, mark as PROFESSIONAL.
+- If the email is explicitly about work opportunities, business proposals, sales deals, partnerships, scheduling meetings, live sessions or professional networking, mark as PROFESSIONAL.
 - If it is generic, promotional, marketing, newsletters, system alerts, or account/login related, mark as NON-PROFESSIONAL.
-- Be conservative: only mark emails as PROFESSIONAL if they clearly show work/business intent.
 
 Output:
 - is_professional (True/False)
-- reasoning (one short reason why)
 """,
     output_type=ProfessionalCheck,
     model=model,
@@ -175,12 +173,13 @@ You are a professional email replier.
 best regards,
 """,
     model=model,
+    output_guardrails=[validate_reply_output],
 )
 
 
 @function_tool
-async def generate_reply(subject: str, body: str, sender: str, id: str) -> str:
-    mongo_id = ObjectId(id)
+async def generate_reply(subject: str, body: str, sender: str, user_id: str) -> str:
+    mongo_id = ObjectId(user_id)
     user = await users_collection.find_one({"_id": mongo_id})
     your_name = (
         user["name"] if user and "name" in user else "PingGenius Assistant"
@@ -221,13 +220,12 @@ You are an email agent.
 1. Call `is_professional(subject, body)` → 
    - If False → return 'junk'
 2. Else, call `is_easy_response(subject, body)` → 
-   - If easy → call `generate_reply(subject, body, sender, id)` and return: 'easy: <reply>'
+   - If easy → call `generate_reply(subject, body, sender, user_id)` and return: 'easy: <reply>'
    - If not easy → return 'hard'
 
 Always call tools. Never guess.
 """,
     tools=[is_professional, is_easy_response, generate_reply],
-    output_guardrails=[validate_reply_output],
     model=model,
 )
 

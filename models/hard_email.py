@@ -12,7 +12,7 @@ async def save_hard_email_to_db(email_data: dict, user_id: str):
     email_data["status"] = "hard"
     email_data["user_id"] = user_id
     email_data["created_at"] = datetime.utcnow()
-    await db.insert_one(email_data)
+    await hard_emails.insert_one(email_data)
 
 
 async def get_all_hard_emails(user_id: str):
