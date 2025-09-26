@@ -7,23 +7,18 @@ from utils.hard_email_replyer import generate_reply
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
 import re
-
-
-MONGO_URL = os.getenv("MONGO_URL")
-client = AsyncIOMotorClient(MONGO_URL)
-db = client["test"]
-users = db["waitlistsusers"]
+from models.users import users
 
 router = APIRouter(tags=["Hard Email"])
 
 
 class RefineEmailRequest(BaseModel):
-    user_id: str
     email_id: str
+    user_id: str
     refined_body: str
 
 
-@router.post("/resend-hard-email")
+@router.post("/refine-hard-email")
 async def resend_hard_email(req: RefineEmailRequest):
     # 1. Fetch hard email from DB
     email_doc = await hard_emails.find_one(
@@ -45,7 +40,7 @@ async def resend_hard_email(req: RefineEmailRequest):
     # 2. Drop refined email to AI Agent
     try:
         refined_reply = await generate_reply(
-            req.refined_body, user_data["username"], sender_name
+            req.refined_body, user_data["name"], sender_name
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Email agent failed: {str(e)}")
