@@ -11,6 +11,7 @@ router = APIRouter(tags=["Sequence"])
 
 
 class GenerateSequenceRequest(BaseModel):
+    user_id: str
     contact_id: str
     email_body: str
     schedule_days: list[int]  # e.g. [1, 3, 7]
@@ -38,6 +39,7 @@ async def generate_sequence(data: GenerateSequenceRequest):
             zip(data.schedule_days, followups), start=2
         ):
             doc = {
+                "user_id": data.user_id,
                 "contact_id": data.contact_id,
                 "email_body": followup_email,
                 "step": idx,

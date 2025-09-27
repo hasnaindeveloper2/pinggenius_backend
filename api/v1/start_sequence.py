@@ -72,6 +72,7 @@ async def start_sequence(data: SequenceRequest):
         # Save this step in DB
         await save_sequence(
             {
+                "user_id": data.user_id,
                 "contact_id": data.contact_id,
                 "email_body": data.email_body,
                 "step": 1,

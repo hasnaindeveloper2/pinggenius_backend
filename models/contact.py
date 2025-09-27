@@ -32,8 +32,8 @@ async def get_contact_by_id(contact_id):
 
 
 # -------- Get all contacts --------
-async def get_all_contacts():
-    contacts_list = await contacts.find({}).to_list(100)
+async def get_all_contacts(user_id: str):
+    contacts_list = await contacts.find({"user_id": user_id})
     return [serialize_doc(c) for c in contacts_list]
 
 # ------- Update the status --------
