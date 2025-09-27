@@ -8,13 +8,15 @@ router = APIRouter(tags=["Cold Email"])
 
 
 class GenerateEmailRequest(BaseModel):
+    email: str
+    user_id: str
     linkedin_url: str
     website: str | None = None
     tone: Literal["friendly", "formal", "funny"] = "friendly"
-    user_id: str
 
 
 class EmailResponse(BaseModel):
+    email: str
     variation_1: str
     variation_2: str | None = None
 
@@ -42,6 +44,7 @@ async def generate_email(data: GenerateEmailRequest):
             user_id=data.user_id,
         )
         return {
+            "email": data.email,
             "variation_1": result[0],
             "variation_2": result[1] if len(result) > 1 else None,
         }

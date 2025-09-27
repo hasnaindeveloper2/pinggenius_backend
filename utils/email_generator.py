@@ -179,7 +179,6 @@ Generate 2 cold email variations.
         result = await Runner.run(
             generator_agent, run_config=config, input=input_prompt
         )
-        print("\n Guardrail didn't tripped")
         print(result.final_output)
         return smart_split_variations(result.final_output)
     except OutputGuardrailTripwireTriggered:
