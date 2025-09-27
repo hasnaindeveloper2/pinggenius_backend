@@ -14,7 +14,7 @@ class Contact(BaseModel):
     role: str
     email: str
     website: str | None = None
-    tone: str = "formal"
+    tone: str
     selected_email: str
 
 
