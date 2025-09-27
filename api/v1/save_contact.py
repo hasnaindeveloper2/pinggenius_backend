@@ -8,6 +8,7 @@ router = APIRouter(tags=["Contacts"])
 
 # -------- Schema --------
 class Contact(BaseModel):
+    user_id: str
     name: str
     linkedin_url: str
     role: str
@@ -24,7 +25,7 @@ async def save_contact(contact: Contact):
         contact_data = contact.dict()
         contact_data["created_at"] = datetime.utcnow()
 
-        await save_contact_to_db(contact_data)
+        await save_contact_to_db(contact_data, user_id=contact.user_id)
 
         return {"status": "success", "message": "Contact saved!"}
 
