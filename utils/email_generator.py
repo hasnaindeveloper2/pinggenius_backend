@@ -17,7 +17,6 @@ from bson import ObjectId
 from database.mongo import db
 from urllib.parse import urlparse
 import re
-import asyncio
 
 load_dotenv()
 
@@ -42,61 +41,18 @@ config = RunConfig(
 )
 
 
-# A class to check wheather the cold email or not
-class ColdEmailGuardrailOutput(BaseModel):
-    is_not_cold_email: bool
-    reasoning: str
-
-
-cold_email_guardrail_agent = Agent(
-    name="Cold Email Guardrail",
-    instructions="""
-Validate that the text is exactly two first-contact cold emails
-formatted like:
-
----
-Email 1
----
-Email 2
-
-Requirements:
-• Each email has a subject and a body.
-• It greets the person by name.
-• It is short, relevant, and aims for a reply.
-• No placeholders such as [Name] or [Company] etc.
-
-Return:
-is_not_cold_email = False  → valid output
-is_not_cold_email = True   → invalid output
-""",
-    output_type=ColdEmailGuardrailOutput,
-)
-
-
-@output_guardrail
-async def validate_cold_email_output(
-    ctx: RunContextWrapper, agent: Agent, input: str | list[TResponseInputItem]
-) -> GuardrailFunctionOutput:
-    result = await Runner.run(
-        cold_email_guardrail_agent, input=input, context=ctx.context, run_config=config
-    )
-    return GuardrailFunctionOutput(
-        output_info=result.final_output,
-        tripwire_triggered=result.final_output.is_not_cold_email,
-    )
-
-
 # ------------- main cold email generator agent ------------------
 generator_agent = Agent(
     name="Cold Email Generator",
     instructions="""
 You generate ultra-personalized cold emails based on LinkedIn profile, role, about, tone, name, and website.
 
-Tone must match the input:
+Tone must match the email:
 - Friendly: conversational and warm
 - Formal: respectful and business-like
 - Funny: witty but professional
 
+- every email has tone
 - every email has subject and body
 - greet the person using the name provided
 - Always keep it short, relevant, and focused on getting a reply.
@@ -114,7 +70,6 @@ Email 1
 Email 2
 
 """,
-    output_guardrails=[validate_cold_email_output],
 )
 
 
@@ -195,16 +150,5 @@ Generate 2 cold email variations.
         )
         print(result.final_output)
         return smart_split_variations(result.final_output)
-    except OutputGuardrailTripwireTriggered:
-        print("\n Guardrail tripped - not valid cold email")
-
-
-asyncio.run(
-    generate_cold_email(
-        linkedin_url="https://www.linkedin.com/in/hasnainxdev/",
-        role="Full-Stack Dev",
-        tone="friendly",
-        about="full-stack & AI dev — building real products, not portfolios. 40+ shipped projects (mini to mid-scale) — from AI email agents to e-commerce platforms.",
-        user_id="68c28010ed3afa8eedba6cbc",
-    )
-)
+    except Exception as e:
+        print("Error in generate_cold_email:", str(e))
