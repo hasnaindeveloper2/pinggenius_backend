@@ -30,15 +30,19 @@ async def get_contact_by_id(contact_id):
     return contact
 
 
+def normalize_mongo_doc(doc):
+    doc["_id"] = str(doc["_id"])
+    return doc
+
 # -------- Get all contacts --------
 async def get_all_contacts(user_id: str):
-    contacts_list = await contacts.find({"user_id": user_id})
-    return [serialize_doc(c) for c in contacts_list]
+    raw_docs = await contacts.find({"user_id": user_id}).to_list(None)
+    return [normalize_mongo_doc(d) for d in raw_docs]
+
 
 # ------- Update the status --------
 async def update_contact_status(contact_id: str, status: str):
     result = await contacts.update_one(
-        {"_id": ObjectId(contact_id)},
-        {"$set": {"status": status}}
+        {"_id": ObjectId(contact_id)}, {"$set": {"status": status}}
     )
     return result.modified_count
