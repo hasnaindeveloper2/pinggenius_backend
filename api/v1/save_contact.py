@@ -11,7 +11,6 @@ class Contact(BaseModel):
     user_id: str
     name: str
     linkedin_url: str
-    role: str
     email: str
     website: str | None = None
     tone: str

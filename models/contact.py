@@ -15,7 +15,6 @@ contacts = db["contacts"]
 async def save_contact_to_db(contact_data: dict, user_id: str):
     contact_data["created_at"] = datetime.utcnow()
     contact_data["status"] = "pending"
-    contact_data["source"] = "linkedin"
     contact_data["user_id"] = user_id
     await contacts.insert_one(contact_data)
 

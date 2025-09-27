@@ -15,13 +15,15 @@ import os
 from dotenv import load_dotenv
 from bson import ObjectId
 from database.mongo import db
+from urllib.parse import urlparse
 import re
+import asyncio
 
 load_dotenv()
 
-gemini_api_key = os.getenv("GEMINI_API_KEY")
+users = db["users"]
 
-users_collection = db["waitlistsusers"]
+gemini_api_key = os.getenv("GEMINI_API_KEY")
 
 provider = AsyncOpenAI(
     api_key=gemini_api_key,
@@ -40,26 +42,32 @@ config = RunConfig(
 )
 
 
-# A class to check wheather the cold email generated `actually a cold email` to prevent extra token usage
+# A class to check wheather the cold email or not
 class ColdEmailGuardrailOutput(BaseModel):
     is_not_cold_email: bool
     reasoning: str
 
 
-# ------------- this guardrail agent check is cold email valid and related to emails ------------------
-
 cold_email_guardrail_agent = Agent(
     name="Cold Email Guardrail",
     instructions="""
-You are a cold email validator. You're given the output from another agent that claims to generate cold outreach emails.
+Validate that the text is exactly two first-contact cold emails
+formatted like:
 
-Analyze the content and decide:
-- Is this a genuine cold outreach email written to initiate contact?
-- Is it relevant, goal-oriented, and does it look like an actual first-time reachout?
+---
+Email 1
+---
+Email 2
 
-If YES → return: is_not_cold_email = False  
-If NO → return: is_not_cold_email = True
+Requirements:
+• Each email has a subject and a body.
+• It greets the person by name.
+• It is short, relevant, and aims for a reply.
+• No placeholders such as [Name] or [Company] etc.
 
+Return:
+is_not_cold_email = False  → valid output
+is_not_cold_email = True   → invalid output
 """,
     output_type=ColdEmailGuardrailOutput,
 )
@@ -82,16 +90,19 @@ async def validate_cold_email_output(
 generator_agent = Agent(
     name="Cold Email Generator",
     instructions="""
-You generate ultra-personalized cold emails based on LinkedIn profile, role, about, and website.
+You generate ultra-personalized cold emails based on LinkedIn profile, role, about, tone, name, and website.
 
 Tone must match the input:
 - Friendly: conversational and warm
 - Formal: respectful and business-like
 - Funny: witty but professional
 
-Always keep it short, relevant, and focused on getting a reply.
+- every email has subject and body
+- greet the person using the name provided
+- Always keep it short, relevant, and focused on getting a reply.
+- do not include placeholders like [Name], [Company], etc.
 
-if you are using /n or /n/n in the email, use the \n character instead of /n or /n/n.
+use the \n or \n\n character 
 
 important!
 Your output format should be:
@@ -112,10 +123,15 @@ def smart_split_variations(output: str) -> list[str]:
 
 
 def extract_name_from_linkedin(url: str) -> str:
-    # Example: https://linkedin.com/in/muhammad-hasnain
-    username = url.strip("/").split("/")[-1]
-    parts = username.replace("-", " ").title().split()  # [Muhammad, Hasnain]
-    return " ".join(parts)
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+
+    path = urlparse(url).path
+    username = path.rstrip("/").split("/")[-1]
+    username = re.sub(r"-\d+$", "", username)
+
+    # just title-case the slug, no splitting
+    return username.replace("-", " ").title()  # e.g. "John Doe" or "hasnainxdev"
 
 
 async def generate_cold_email(
@@ -142,7 +158,7 @@ async def generate_cold_email(
 
             `about (str | None): Additional context or information about the recipient`
 
-            `user_id (str): MongoDB user ID of the sender`
+            `user_id (str): MongoDB user ID of the reciver`
 
         Returns:
             list[str]: A list containing two variations of generated cold emails
@@ -153,11 +169,9 @@ async def generate_cold_email(
 
     # here the real logic begins
     mongo_id = ObjectId(user_id)
-    user = await users_collection.find_one({"_id": mongo_id})
+    user = await users.find_one({"_id": mongo_id})
 
-    your_name = (
-        user["username"] if user and "username" in user else "PingGenius Assistant"
-    )
+    your_name = user["name"] if user and "name" in user else "PingGenius Assistant"
 
     # extarct the name remove extra numbers from your_name and add space like "Hasnain siddique"
     your_name = re.sub(r"\d+", " ", your_name).strip()
@@ -183,3 +197,14 @@ Generate 2 cold email variations.
         return smart_split_variations(result.final_output)
     except OutputGuardrailTripwireTriggered:
         print("\n Guardrail tripped - not valid cold email")
+
+
+asyncio.run(
+    generate_cold_email(
+        linkedin_url="https://www.linkedin.com/in/hasnainxdev/",
+        role="Full-Stack Dev",
+        tone="friendly",
+        about="full-stack & AI dev — building real products, not portfolios. 40+ shipped projects (mini to mid-scale) — from AI email agents to e-commerce platforms.",
+        user_id="68c28010ed3afa8eedba6cbc",
+    )
+)
