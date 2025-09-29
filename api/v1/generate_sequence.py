@@ -46,10 +46,11 @@ async def generate_sequence(data: GenerateSequenceRequest):
                 "sent_at": None,
                 "next_send_at": now + timedelta(days=day),
                 "status": "pending",
+                "created_at": now,
             }
             await save_sequence(dict(doc))
             await contacts.find_one_and_update(
-                {"_id": data.contact_id}, {"$set": {"status": "inSequence"}}
+                {"_id": ObjectId(data.contact_id)}, {"$set": {"status": "inSequence"}}
             )
             sequence_docs.append(doc)
 

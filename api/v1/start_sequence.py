@@ -79,6 +79,7 @@ async def start_sequence(data: SequenceRequest):
                 "sent_at": datetime.utcnow(),
                 "next_send_at": None,
                 "status": "sent",
+                "created_at": datetime.utcnow(),
             }
         )
 
