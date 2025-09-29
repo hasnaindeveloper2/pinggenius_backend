@@ -1,10 +1,11 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from models.sequence import save_sequence, sequences
-from models.contact import get_contact_by_id, update_contact_status, contacts
+from models.contact import get_contact_by_id, contacts
 from gmail_service import get_gmail_service, send_email_reply
 from utils.extract_subject import extract_subject
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from models.sequence_job import sequence_job
 from datetime import datetime
 from bson import ObjectId
 from utils.scheduler import scheduler
@@ -66,9 +67,6 @@ async def start_sequence(data: SequenceRequest):
         # Send first email immediately
         send_email_reply(service, to_email, subject, data.email_body)
 
-        # Update status
-        await update_contact_status(contact_id=data.contact_id, status="inSequence")
-
         # Save this step in DB
         await save_sequence(
             {
@@ -94,10 +92,11 @@ async def start_sequence(data: SequenceRequest):
                 send_scheduled_email,
                 "date",
                 run_date=run_date,
-                args=[data.contact_id, step["email_body"]],
+                args=[data.contact_id, step["email_body"], data.user_id],
                 id=f"seq_{data.contact_id}_{step['step']}",
             )
-            print(f"Scheduled follow-up email for {step['step']} on {run_date}")
+        await sequence_job.update_one({"user_id": ObjectId(data.user_id),"contact_id": contact_id}, {"$set": {"is_sequence_running": True}}, upsert=True)
+        print(f"Scheduled follow-up email for {step['step']} on {run_date}")
 
         return {
             "message": f"Sequence started. First email sent, follow-ups scheduled for {step['step']} on {run_date}"

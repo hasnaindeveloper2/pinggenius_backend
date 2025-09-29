@@ -1,13 +1,16 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from models.sequence import sequences
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from models.contact import contacts
+from models.sequence_job import sequence_job
+from bson import ObjectId
 from utils.scheduler import scheduler
 
 router = APIRouter(tags=["Sequence"])
 
 
 class StopSequenceRequest(BaseModel):
+    user_id: str
     contact_id: str
 
 
@@ -30,8 +33,14 @@ async def stop_sequence(id: StopSequenceRequest):
                     {"$set": {"status": "cancelled"}},
                 )
 
-                # TODO: Update contact status to 'InCompleted' if job is stopped before all steps are sent
-
+        # Update contact status to inCompleted
+        await contacts.find_one_and_update(
+            {"_id": ObjectId(id.contact_id)}, {"$set": {"status": "inCompleted"}}
+        )
+        await sequence_job.update_one(
+            {"user_id": ObjectId(id.user_id), "contact_id": ObjectId(id.contact_id)},
+            {"$set": {"is_sequence_running": True}},
+        )
         return {
             "message": f"Cancelled steps {cancelled_steps} for contact {id.contact_id}"
         }

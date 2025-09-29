@@ -12,6 +12,7 @@ from api.v1 import (
     refine_hard_emails,
     list_all_email,
     gamail_scheduler,
+    sequence_job_status
 )
 
 app = FastAPI()
@@ -35,9 +36,10 @@ def read_root():
 app.include_router(analyze_email.router, prefix="/api/v1")
 app.include_router(outreach_email.router, prefix="/api/v1")
 app.include_router(save_contact.router, prefix="/api/v1")
-app.include_router(start_sequence.router, prefix="/api/v1")
 app.include_router(list_contacts.router, prefix="/api/v1")
+app.include_router(start_sequence.router, prefix="/api/v1")
 app.include_router(stop_sequence.router, prefix="/api/v1")
+app.include_router(sequence_job_status.router, prefix="/api/v1")
 app.include_router(generate_sequence.router, prefix="/api/v1")
 app.include_router(hard_emails.router, prefix="/api/v1")
 app.include_router(refine_hard_emails.router, prefix="/api/v1")
