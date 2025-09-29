@@ -39,7 +39,7 @@ async def stop_sequence(id: StopSequenceRequest):
         )
         await sequence_job.update_one(
             {"user_id": ObjectId(id.user_id), "contact_id": ObjectId(id.contact_id)},
-            {"$set": {"is_sequence_running": True}},
+            {"$set": {"is_sequence_running": False}},
         )
         return {
             "message": f"Cancelled steps {cancelled_steps} for contact {id.contact_id}"

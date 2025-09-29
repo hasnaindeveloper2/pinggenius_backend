@@ -72,6 +72,7 @@ async def start_sequence(data: SequenceRequest):
             {
                 "user_id": data.user_id,
                 "contact_id": data.contact_id,
+                "contact_name": contact["name"],
                 "email_body": data.email_body,
                 "step": 1,
                 "sent_at": datetime.utcnow(),

@@ -41,6 +41,7 @@ async def generate_sequence(data: GenerateSequenceRequest):
             doc = {
                 "user_id": data.user_id,
                 "contact_id": data.contact_id,
+                "contact_name": contact["name"],
                 "email_body": followup_email,
                 "step": idx,
                 "sent_at": None,
