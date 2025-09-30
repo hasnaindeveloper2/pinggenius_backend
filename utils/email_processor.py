@@ -7,6 +7,7 @@ from gmail_service import (
 from agent_core import run_email_agent
 from models.emails import save_email
 from models.hard_email import save_hard_email_to_db
+from utils.analytics_service import update_analytics
 import logging
 import asyncio
 
@@ -27,10 +28,17 @@ async def process_email(email, user_id):
             raise RuntimeError("Agent returned non-string")
 
         decision = result.lower().strip()
+
+        # Always increment total emails count
+        await update_analytics(user_id, "totalEmails", 1)
+
         if decision == "junk":
             move_to_trash(service, email["id"])
-            # save junk email to db with a status of junk to future reference
             await save_email(user_id, email["subject"], email["sender"], "", "junk")
+
+            # ✅ Update analytics
+            await update_analytics(user_id, "spamDetected", 1)
+
             print("Email marked as junk and moved to trash and stored ✅")
             return {"status": "junk"}
 
@@ -40,10 +48,18 @@ async def process_email(email, user_id):
             await send_email_reply(service, to_email, email["subject"], reply.title())
             await marked_as_read(service, email["id"])
             await save_email(user_id, email["subject"], to_email, reply.title(), "easy")
+
+            # ✅ Update analytics
+            await update_analytics(user_id, "autoReplied", 1)
+
             print("Easy email replied and marked as read and stored ✅")
             return {"status": "easy", "reply": reply.title()}
 
         await save_hard_email_to_db(email, user_id)
+
+        # ✅ Update analytics
+        await update_analytics(user_id, "hardEmails", 1)
+
         print("Email marked as hard and stored for manual review ✅")
         return {"status": "hard"}
 
@@ -52,5 +68,3 @@ async def process_email(email, user_id):
             "process_email failed for user %s email %s", user_id, email.get("id")
         )
         return {"status": "error", "message": str(e)}
-
-
