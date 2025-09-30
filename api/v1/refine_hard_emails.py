@@ -8,6 +8,8 @@ import os
 from motor.motor_asyncio import AsyncIOMotorClient
 import re
 from models.users import users
+from utils.analytics_service import update_analytics
+
 
 router = APIRouter(tags=["Hard Email"])
 
@@ -54,6 +56,9 @@ async def resend_hard_email(req: RefineEmailRequest):
         clean_sender = match.group(1) if match else sender.strip()
 
         send_email_reply(service, clean_sender, subject, refined_reply)
+        # ✅ Update analytics
+        await update_analytics(req.user_id, "autoReplied", 1)
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gmail send failed: {str(e)}")
 

@@ -5,6 +5,7 @@ from models.sequence import save_sequence
 from models.contact import get_contact_by_id
 from utils.followup_generator import generate_followups
 from models.contact import contacts
+from utils.analytics_service import update_analytics
 from bson import ObjectId
 
 router = APIRouter(tags=["Sequence"])
@@ -52,6 +53,11 @@ async def generate_sequence(data: GenerateSequenceRequest):
             await save_sequence(dict(doc))
             await contacts.find_one_and_update(
                 {"_id": ObjectId(data.contact_id)}, {"$set": {"status": "inSequence"}}
+            )
+            await update_analytics(
+                data.user_id,
+                "stepsPlanned",
+                1,
             )
             sequence_docs.append(doc)
 
