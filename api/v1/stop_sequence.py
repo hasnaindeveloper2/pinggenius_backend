@@ -32,7 +32,7 @@ async def stop_sequence(id: StopSequenceRequest):
                     {"contact_id": id.contact_id, "step": step},
                     {"$set": {"status": "cancelled"}},
                 )
-
+                
         # Update contact status to inCompleted
         await contacts.find_one_and_update(
             {"_id": ObjectId(id.contact_id)}, {"$set": {"status": "inCompleted"}}

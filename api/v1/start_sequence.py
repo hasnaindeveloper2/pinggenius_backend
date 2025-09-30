@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from models.sequence import save_sequence, sequences
-from models.contact import get_contact_by_id, contacts
+from models.contact import get_contact_by_id
 from gmail_service import get_gmail_service, send_email_reply
 from utils.extract_subject import extract_subject
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from models.sequence_job import sequence_job
 from datetime import datetime
 from bson import ObjectId
+from utils.analytics_service import update_analytics
 from utils.scheduler import scheduler
 
 router = APIRouter(tags=["Sequence"])
@@ -36,6 +36,9 @@ async def send_scheduled_email(contact_id: str, email_body: str, user_id: str):
         email_body = body.strip()
 
     send_email_reply(service, to_email, subject, email_body)
+
+    # ✅ Update analytics
+    await update_analytics(user_id, "autoReplied", 1)
 
     # Mark sequence step as sent
     await sequences.update_one(
@@ -67,6 +70,9 @@ async def start_sequence(data: SequenceRequest):
         # Send first email immediately
         send_email_reply(service, to_email, subject, data.email_body)
 
+        # ✅ Update analytics
+        await update_analytics(data.user_id, "autoReplied", 1)
+
         # Save this step in DB
         await save_sequence(
             {
@@ -96,7 +102,13 @@ async def start_sequence(data: SequenceRequest):
                 args=[data.contact_id, step["email_body"], data.user_id],
                 id=f"seq_{data.contact_id}_{step['step']}",
             )
-        await sequence_job.update_one({"user_id": ObjectId(data.user_id),"contact_id": contact_id}, {"$set": {"is_sequence_running": True}}, upsert=True)
+            # ✅ Update analytics
+            await update_analytics(data.user_id, "stepsPlanned", 1)
+        await sequence_job.update_one(
+            {"user_id": ObjectId(data.user_id), "contact_id": contact_id},
+            {"$set": {"is_sequence_running": True}},
+            upsert=True,
+        )
         print(f"Scheduled follow-up email for {step['step']} on {run_date}")
 
         return {
