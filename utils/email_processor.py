@@ -60,7 +60,7 @@ async def process_email(email, user_id):
         await save_hard_email_to_db(email, user_id)
 
         # ✅ Update analytics
-        await update_analytics(user_id, "totalEmails", 1)
+        await update_analytics(user_id, "hardEmails", 1)
 
         print("Email marked as hard and stored for manual review ✅")
         return {"status": "hard"}
