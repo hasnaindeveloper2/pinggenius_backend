@@ -10,3 +10,13 @@ async def update_analytics(user_id: str, field: str, value: int = 1):
         },
         upsert=True
     )
+    
+async def update_sequence_progress(user_id: str, field: str, value: int = 1):
+    await analytics_overview.update_one(
+        {"userId": user_id},
+        {
+            "$inc": {f"charts.sequenceProgress.{field}": value},
+            "$set": {"lastUpdated": datetime.utcnow()},
+        },
+        upsert=True
+    )

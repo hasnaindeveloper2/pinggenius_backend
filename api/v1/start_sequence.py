@@ -9,6 +9,7 @@ from datetime import datetime
 from bson import ObjectId
 from utils.analytics_service import update_analytics
 from utils.scheduler import scheduler
+from utils.analytics_service import update_sequence_progress
 
 router = APIRouter(tags=["Sequence"])
 
@@ -36,9 +37,11 @@ async def send_scheduled_email(contact_id: str, email_body: str, user_id: str):
         email_body = body.strip()
 
     send_email_reply(service, to_email, subject, email_body)
-
+    
     # ✅ Update analytics
     await update_analytics(user_id, "autoReplied", 1)
+    # ✅ Update sequence progress
+    await update_sequence_progress(user_id, "stepsCompleted", 1)
 
     # Mark sequence step as sent
     await sequences.update_one(
@@ -103,7 +106,7 @@ async def start_sequence(data: SequenceRequest):
                 id=f"seq_{data.contact_id}_{step['step']}",
             )
             # ✅ Update analytics
-            await update_analytics(data.user_id, "stepsPlanned", 1)
+            await update_sequence_progress(data.user_id, "stepsPlanned", 1)
         await sequence_job.update_one(
             {"user_id": ObjectId(data.user_id), "contact_id": contact_id},
             {"$set": {"is_sequence_running": True}},
