@@ -10,6 +10,7 @@ from models.hard_email import save_hard_email_to_db
 from utils.analytics_service import update_analytics
 import logging
 import asyncio
+from utils.analytics_service import update_email_volume
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ async def process_email(email, user_id):
 
         # Always increment total emails count
         await update_analytics(user_id, "totalEmails", 1)
+        await update_email_volume(user_id, 1)
 
         if decision == "junk":
             move_to_trash(service, email["id"])
@@ -58,7 +60,7 @@ async def process_email(email, user_id):
         await save_hard_email_to_db(email, user_id)
 
         # ✅ Update analytics
-        await update_analytics(user_id, "hardEmails", 1)
+        await update_analytics(user_id, "totalEmails", 1)
 
         print("Email marked as hard and stored for manual review ✅")
         return {"status": "hard"}
