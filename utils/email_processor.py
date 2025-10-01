@@ -11,6 +11,7 @@ from utils.analytics_service import update_analytics
 import logging
 import asyncio
 from utils.analytics_service import update_email_volume
+from utils.regex_junk_detection import is_junk_email
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,17 @@ async def process_email(email, user_id):
         service = await get_gmail_service(user_id)
         input_text = f"Subject: {email['subject']}\nFrom: {email['sender']}\n\nBody: {email.get('snippet','')} user_id:{user_id}"
 
+        # ✅ Junk detection (regex)
+        if is_junk_email(input_text):
+            move_to_trash(service, email["id"])
+            await save_email(user_id, email["subject"], email["sender"], "", "junk")
+            await update_analytics(user_id, "totalEmails", 1)
+            await update_email_volume(user_id, 1)
+            await update_analytics(user_id, "spamDetected", 1)
+
+            print("Email marked as junk and moved to trash and stored ✅")
+            return {"status": "junk"}
+
         result = await run_email_agent(input_text)
         if not isinstance(result, str):
             print("⚠️ Agent returned:", repr(result))
@@ -34,14 +46,8 @@ async def process_email(email, user_id):
         await update_analytics(user_id, "totalEmails", 1)
         await update_email_volume(user_id, 1)
 
-        if decision == "junk":
-            move_to_trash(service, email["id"])
-            await save_email(user_id, email["subject"], email["sender"], "", "junk")
-
-            # ✅ Update analytics
-            await update_analytics(user_id, "spamDetected", 1)
-
-            print("Email marked as junk and moved to trash and stored ✅")
+        # fallback if agent junk detection triggers
+        if decision.startswith("junk"):
             return {"status": "junk"}
 
         if decision.startswith("easy:"):

@@ -1,5 +1,6 @@
 import os
 from utils.extract_name import extract_name
+from utils.regex_junk_detection import is_junk_email
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 from agents import (
@@ -92,36 +93,34 @@ async def validate_reply_output(
     )
 
 
-# ---------------- Agents ----------------
-
 # 1. Professional filter
-professional_agent = Agent(
-    name="Professional Filter",
-    instructions="""
-You are an email professional relevance filter.
+# professional_agent = Agent(
+#     name="Professional Filter",
+#     instructions="""
+# You are an email professional relevance filter.
 
-Given subject + body, classify the email strictly into one of two categories:
+# Given subject + body, classify the email strictly into one of two categories:
 
-1. PROFESSIONAL (business, client, work, networking, sales inquiries, partnerships, product demo, communication, formal collaboration, simple questions (e.g. greetings, scheduling meetings, live sessions)
-2. NON-PROFESSIONAL (spam, promotions, newsletters, system updates, marketing campaigns, login/sign-up confirmations, job alerts, welcome emails, community/social media notifications like LinkedIn/Twitter/Instagram, receipts, OTPs, system alerts)
+# 1. PROFESSIONAL (business, client, work, networking, sales inquiries, partnerships, product demo, communication, formal collaboration, simple questions (e.g. greetings, scheduling meetings, live sessions)
+# 2. NON-PROFESSIONAL (spam, promotions, newsletters, system updates, marketing campaigns, login/sign-up confirmations, job alerts, welcome emails, community/social media notifications like LinkedIn/Twitter/Instagram, receipts, OTPs, system alerts)
 
-Rules:
-- If the email is explicitly about work opportunities, business proposals, sales deals, partnerships, scheduling meetings, live sessions or professional networking, mark as PROFESSIONAL.
-- If it is generic, promotional, marketing, newsletters, system alerts, or account/login related, mark as NON-PROFESSIONAL.
+# Rules:
+# - If the email is explicitly about work opportunities, business proposals, sales deals, partnerships, scheduling meetings, live sessions or professional networking, mark as PROFESSIONAL.
+# - If it is generic, promotional, marketing, newsletters, system alerts, or account/login related, mark as NON-PROFESSIONAL.
 
-Output:
-- is_professional (True/False)
-""",
-    output_type=ProfessionalCheck,
-    model=model,
-)
+# Output:
+# - is_professional (True/False)
+# """,
+#     output_type=ProfessionalCheck,
+#     model=model,
+# )
 
 
-@function_tool
-async def is_professional(subject: str, body: str) -> bool:
-    input_prompt = f"Subject: {subject}\nBody: {body}"
-    result = await Runner.run(professional_agent, input=input_prompt)
-    return result.final_output.is_professional
+# @function_tool
+# async def is_professional(subject: str, body: str) -> bool:
+#     input_prompt = f"Subject: {subject}\nBody: {body}"
+#     result = await Runner.run(professional_agent, input=input_prompt)
+#     return result.final_output.is_professional
 
 
 # 2. Easy response classifier
@@ -209,17 +208,15 @@ best regards or best,
 main_agent = Agent(
     name="Email Agent",
     instructions="""
-You are an email agent.
+You are an expert email agent.
 
-1. Call `is_professional(subject, body)` → 
-   - If False → return 'junk'
-2. Else, call `is_easy_response(subject, body)` → 
+2. call `is_easy_response(subject, body)` → 
    - If easy → call `generate_reply(subject, body, sender, user_id)` and return: 'easy: <reply>'
    - If not easy → return 'hard'
 
 Always call tools. Never guess.
 """,
-    tools=[is_professional, is_easy_response, generate_reply],
+    tools=[is_easy_response, generate_reply],
     model=model,
 )
 
@@ -227,10 +224,15 @@ Always call tools. Never guess.
 # Run wrapper
 async def run_email_agent(input_text: str) -> str:
     try:
-        result = await Runner.run(main_agent, input=input_text)
-        # replace subject: word with empty
-        final_output = result.final_output.replace("Subject:", "")
+        
+            # Step 1: Junk detection (regex + heuristics)
+        if is_junk_email(input_text):
+            return "junk"
 
+        # Step 2: Run through main agent (easy/hard + reply)
+        result = await Runner.run(main_agent, input=input_text)
+        final_output = result.final_output.replace("Subject:", "")
+        
         print(final_output)
         return final_output
     except Exception as e:
