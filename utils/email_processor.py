@@ -47,7 +47,7 @@ async def process_email(email, user_id):
         if decision.startswith("easy:"):
             reply = decision.split("easy:", 1)[1].strip()
             to_email = email["sender"].split("<")[-1].replace(">", "").strip()
-            await send_email_reply(service, to_email, email["subject"], reply.title())
+            send_email_reply(service, to_email, email["subject"], reply.title())
             await marked_as_read(service, email["id"])
             await save_email(user_id, email["subject"], to_email, reply.title(), "easy")
 
