@@ -49,6 +49,10 @@ async def generate_sequence(data: GenerateSequenceRequest):
                 "status": "pending",
                 "created_at": now,
             }
+            # before creating sequence steps (count planned steps)
+            # user_allowed = PLAN_LIMITS[plan]['sequences'] - user['usage']['sequencesCreated']
+            # if number_of_steps > user_allowed:
+            #     raise HTTPException(403, detail="Sequence limit exceeded. Upgrade to Pro.")
             await save_sequence(dict(doc))
             await contacts.find_one_and_update(
                 {"_id": ObjectId(data.contact_id)}, {"$set": {"status": "inSequence"}}

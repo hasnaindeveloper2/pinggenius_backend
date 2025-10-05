@@ -12,6 +12,7 @@ import logging
 import asyncio
 from utils.analytics_service import update_email_volume
 from utils.regex_junk_detection import is_junk_email
+from utils.qouta import try_consume_quota
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,12 @@ async def process_email(email, user_id):
         service = await get_gmail_service(user_id)
         input_text = f"Subject: {email['subject']}\nFrom: {email['sender']}\n\nBody: {email.get('snippet','')} user_id:{user_id}"
 
+        
+        consumed = await try_consume_quota(user_id, "emailAnalyses", 1)
+        if not consumed:
+        # quota exhausted: store email, mark throttled, notify the user via UI later
+            return {"status": "quota_exceeded"}
+        
         # ✅ Junk detection (regex)
         if is_junk_email(input_text):
             move_to_trash(service, email["id"])
@@ -34,6 +41,8 @@ async def process_email(email, user_id):
 
             print("Email marked as junk and moved to trash and stored ✅")
             return {"status": "junk"}
+        
+        
 
         result = await run_email_agent(input_text)
         if not isinstance(result, str):
