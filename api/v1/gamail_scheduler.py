@@ -19,7 +19,7 @@ async def start_job(email_job: EmailJobRequest):
         {"$set": {"is_sync_running": True, "interval": email_job.interval_minutes}},
         upsert=True,
     )
-    start_user_scheduler(email_job.user_id, email_job.interval_minutes)
+    await start_user_scheduler(email_job.user_id, email_job.interval_minutes)
     return {
         "status": "started",
         "user_id": email_job.user_id,
@@ -31,7 +31,7 @@ async def start_job(email_job: EmailJobRequest):
 async def stop_job(user_id: str):
     """Stops the email checking job for a specific user."""
     await jobs.update_one({"user_id": user_id}, {"$set": {"is_sync_running": False}})
-    stop_user_scheduler(user_id)
+    await stop_user_scheduler(user_id)
     return {"status": "stopped", "user_id": user_id}
 
 

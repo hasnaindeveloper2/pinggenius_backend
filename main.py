@@ -12,8 +12,10 @@ from api.v1 import (
     refine_hard_emails,
     list_all_email,
     gamail_scheduler,
-    sequence_job_status
+    sequence_job_status,
 )
+from utils.APScheduler import monitor_schedulers
+import asyncio
 
 app = FastAPI()
 
@@ -30,6 +32,12 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"message": "PingGenius Agent API is running 🚀"}
+
+
+@app.on_event("startup")
+async def monitoring_schedulers():
+    asyncio.create_task(monitor_schedulers())
+    print("✅ Scheduler monitor started...")
 
 
 # -------- Routers --------
