@@ -6,6 +6,8 @@ from models.contact import get_contact_by_id
 from utils.followup_generator import generate_followups
 from models.contact import contacts
 from bson import ObjectId
+from utils.qouta import try_consume_quota
+
 
 router = APIRouter(tags=["Sequence"])
 
@@ -23,6 +25,15 @@ async def generate_sequence(data: GenerateSequenceRequest):
         contact = await get_contact_by_id(data.contact_id)
         if not contact:
             raise HTTPException(status_code=404, detail="Contact not found")
+
+            # ✅ Quota check before generating sequences
+        # We only consume *1* sequence per "sequence flow" creation, not per step
+        consumed = await try_consume_quota(data.user_id, "sequencesCreated", 1)
+        if not consumed:
+            raise HTTPException(
+                status_code=403,
+                detail="Sequence limit exceeded. Upgrade to Pro to create more outreach sequences.",
+            )
 
         # ---- Using agent to generate follow-ups ----
         followups = await generate_followups(

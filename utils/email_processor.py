@@ -25,12 +25,11 @@ async def process_email(email, user_id):
         service = await get_gmail_service(user_id)
         input_text = f"Subject: {email['subject']}\nFrom: {email['sender']}\n\nBody: {email.get('snippet','')} user_id:{user_id}"
 
-        
         consumed = await try_consume_quota(user_id, "emailAnalyses", 1)
         if not consumed:
-        # quota exhausted: store email, mark throttled, notify the user via UI later
+            # quota exhausted: store email, mark throttled, notify the user via UI later
             return {"status": "quota_exceeded"}
-        
+
         # ✅ Junk detection (regex)
         if is_junk_email(input_text):
             move_to_trash(service, email["id"])
@@ -41,8 +40,6 @@ async def process_email(email, user_id):
 
             print("Email marked as junk and moved to trash and stored ✅")
             return {"status": "junk"}
-        
-        
 
         result = await run_email_agent(input_text)
         if not isinstance(result, str):
@@ -60,13 +57,15 @@ async def process_email(email, user_id):
             return {"status": "junk"}
 
         if decision.startswith("easy:"):
-            reply = decision.split("easy:", 1)[1].strip()
-            # .split("<")[-1].replace(">", "").strip()
+            reply = decision.split("easy:", 1)[1].strip().title()
             # sending raw email
             to_email = email["sender"]
-            send_email_reply(service, to_email, email["subject"], reply.title())
+            send_email_reply(service, to_email, email["subject"], reply)
             marked_as_read(service, email["id"])
-            await save_email(user_id, email["subject"], to_email, reply.title(), "easy")
+            await save_email(user_id, email["subject"], to_email, reply, "easy")
+
+            # Consume auto-reply quota
+            await try_consume_quota(user_id, "autoReplies", 1)
 
             # ✅ Update analytics
             await update_analytics(user_id, "autoReplied", 1)

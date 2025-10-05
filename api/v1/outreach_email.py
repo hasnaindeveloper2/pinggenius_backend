@@ -3,6 +3,7 @@ from pydantic import BaseModel, HttpUrl, Field
 from typing import Optional, Literal
 from utils.email_generator import generate_cold_email
 from utils.linkedin_scraper import guardrail_linkedin_scrape
+from utils.qouta import try_consume_quota
 
 router = APIRouter(tags=["Cold Email"])
 
@@ -28,7 +29,16 @@ async def generate_email(data: GenerateEmailRequest):
         if "linkedin.com/in/" not in data.linkedin_url:
             raise HTTPException(status_code=400, detail="Invalid LinkedIn URL format")
 
-        # STEP 2: Scrape LinkedIn with guardrail + caching
+        # Step 2: Check usage quota for cold email generation
+        # We'll count this as an "emailAnalyses" since it's outbound AI processing
+        consumed = await try_consume_quota(data.user_id, "contactsImported", 1)
+        if not consumed:
+            raise HTTPException(
+                status_code=403,
+                detail="Email generation limit reached. Upgrade to Pro to generate more outreach emails.",
+            )
+
+        # STEP 3: Scrape LinkedIn with guardrail + caching
         linkedin_data = guardrail_linkedin_scrape(data.linkedin_url)
         if linkedin_data["status"] != "success":
             raise HTTPException(status_code=400, detail=linkedin_data["message"])
