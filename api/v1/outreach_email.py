@@ -30,7 +30,7 @@ async def generate_email(data: GenerateEmailRequest):
             raise HTTPException(status_code=400, detail="Invalid LinkedIn URL format")
 
         # Step 2: Check usage quota for cold email generation
-        # We'll count this as an "emailAnalyses" since it's outbound AI processing
+        # We'll count this as an "contactsImported" since it's outbound AI processing
         consumed = await try_consume_quota(data.user_id, "contactsImported", 1)
         if not consumed:
             raise HTTPException(
