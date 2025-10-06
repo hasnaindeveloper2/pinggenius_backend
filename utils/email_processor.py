@@ -28,7 +28,7 @@ async def process_email(email, user_id):
         consumed = await try_consume_quota(user_id, "emailAnalyses", 1)
         if not consumed:
             # quota exhausted: store email, mark throttled, notify the user via UI later
-            return {"status": "quota_exceeded"}
+            return {"status": "quota_exceeded for email analyses"}
 
         # ✅ Junk detection (regex)
         if is_junk_email(input_text):

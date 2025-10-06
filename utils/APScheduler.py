@@ -28,14 +28,23 @@ async def _process_emails(user_id: str):
 
         for email in emails:
             await process_email(email, user_id)
+            if email.get("status").startswith("quota_exceeded"):
+                stop_user_scheduler(user_id)
+                await jobs.update_one(
+                    {"user_id": user_id}, {"$set": {"is_sync_running": False}}
+                )
+                print(f"🛑 Stopped scheduler for {user_id} (qouta exceeded)")
+                return {f"🛑 Stopped scheduler for {user_id} (qouta exceeded)"}
 
     except Exception as e:
         print(f"❌ Error in job for {user_id}: {e}")
 
 
+
 # ✅ Wrapper: this is the job scheduler will call
 async def scheduled_email_check(user_id: str):
     asyncio.create_task(_process_emails(user_id))
+
 
 
 # ✅ Start job for a user
@@ -68,6 +77,7 @@ async def start_user_scheduler(user_id: str, interval_minutes: int):
         "started_at": datetime.utcnow(),
         "auto_stop_after": timedelta(hours=3) if not is_pro else None,
     }
+
 
 
 # ✅ Stop job for a user
