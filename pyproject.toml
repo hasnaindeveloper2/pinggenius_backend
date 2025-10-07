@@ -6,16 +6,12 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "apscheduler>=3.11.0",
-    "chainlit>=2.5.5",
     "fastapi>=0.115.14",
     "google-api-python-client>=2.174.0",
     "google-auth>=2.40.3",
     "google-auth-oauthlib>=1.2.2",
-    "google-search-results>=2.4.2",
     "motor>=3.7.1",
     "openai-agents>=0.0.19",
-    "playwright>=1.54.0",
-    "playwright-stealth>=2.0.0",
     "python-dotenv>=1.1.1",
     "pytz>=2025.2",
     "uvicorn>=0.34.3",
