@@ -15,7 +15,6 @@ from api.v1 import (
     sequence_job_status,
 )
 from utils.APScheduler import monitor_schedulers
-import asyncio
 
 app = FastAPI()
 
@@ -36,7 +35,10 @@ def read_root():
 
 @app.on_event("startup")
 async def monitoring_schedulers():
-    asyncio.create_task(monitor_schedulers())
+    import asyncio
+
+    loop = asyncio.get_event_loop()
+    loop.create_task(monitor_schedulers())
     print("✅ Scheduler monitor started...")
 
 
