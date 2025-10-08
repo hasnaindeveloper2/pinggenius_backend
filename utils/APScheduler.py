@@ -1,4 +1,4 @@
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from utils.scheduler import scheduler
 from gmail_service import fetch_recent_emails, get_gmail_service
 from utils.email_processor import process_email
 from models.users import users
@@ -6,9 +6,6 @@ import asyncio
 from models.jobs import jobs
 from datetime import datetime, timedelta
 
-
-scheduler = AsyncIOScheduler()
-scheduler.start()
 
 
 # Store job metadata to control auto-stop timers

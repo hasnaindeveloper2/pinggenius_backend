@@ -15,13 +15,14 @@ from api.v1 import (
     sequence_job_status,
 )
 from utils.APScheduler import monitor_schedulers
+from utils.scheduler import scheduler
 
 app = FastAPI()
 
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "https://pinggenius.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,6 +40,7 @@ async def monitoring_schedulers():
 
     loop = asyncio.get_event_loop()
     loop.create_task(monitor_schedulers())
+    scheduler.start()
     print("✅ Scheduler monitor started...")
 
 
