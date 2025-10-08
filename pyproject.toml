@@ -14,5 +14,6 @@ dependencies = [
     "openai-agents>=0.0.19",
     "python-dotenv>=1.1.1",
     "pytz>=2025.2",
+    "serpapi>=0.1.5",
     "uvicorn>=0.34.3",
 ]
