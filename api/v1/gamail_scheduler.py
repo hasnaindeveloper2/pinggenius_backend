@@ -6,13 +6,17 @@ from models.jobs import jobs
 router = APIRouter(tags=["Scheduler"])
 
 
-class EmailJobRequest(BaseModel):
+class EmailJobStartRequest(BaseModel):
     user_id: str
     interval_minutes: int
+    
+    
+class EmailJobStopRequest(BaseModel):
+    user_id: str
 
 
 @router.post("/start-email-job")
-async def start_job(email_job: EmailJobRequest):
+async def start_job(email_job: EmailJobStartRequest):
     """Starts a background job to check for new emails for a user at a specified interval."""
     await jobs.update_one(
         {"user_id": email_job.user_id},
@@ -28,7 +32,7 @@ async def start_job(email_job: EmailJobRequest):
 
 
 @router.post("/stop-email-job")
-async def stop_job(user_id: str):
+async def stop_job(user_id: EmailJobStopRequest):
     """Stops the email checking job for a specific user."""
     await jobs.update_one({"user_id": user_id}, {"$set": {"is_sync_running": False}})
     await stop_user_scheduler(user_id)
