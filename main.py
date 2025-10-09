@@ -5,10 +5,11 @@ from utils.scheduler import scheduler
 
 app = FastAPI()
 
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://pinggenius.vercel.app", "http://161.97.94.152"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
