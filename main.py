@@ -1,19 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.v1 import (
-    analyze_email,
-    outreach_email,
-    save_contact,
-    start_sequence,
-    list_contacts,
-    generate_sequence,
-    hard_emails,
-    stop_sequence,
-    refine_hard_emails,
-    list_all_email,
-    gamail_scheduler,
-    sequence_job_status,
-)
 from utils.APScheduler import monitor_schedulers
 from utils.scheduler import scheduler
 
@@ -22,7 +8,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://pinggenius.vercel.app"],
+    allow_origins=["http://localhost:3000", "https://pinggenius.vercel.app", "http://161.97.94.152"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,13 +24,35 @@ def read_root():
 async def monitoring_schedulers():
     import asyncio
 
-    loop = asyncio.get_event_loop()
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
     loop.create_task(monitor_schedulers())
-    scheduler.start()
+
+    if not scheduler.running:
+        scheduler.start()
+
     print("✅ Scheduler monitor started...")
 
 
 # -------- Routers --------
+from api.v1 import (
+    analyze_email,
+    outreach_email,
+    save_contact,
+    start_sequence,
+    list_contacts,
+    generate_sequence,
+    hard_emails,
+    stop_sequence,
+    refine_hard_emails,
+    list_all_email,
+    gamail_scheduler,
+    sequence_job_status,
+)
 app.include_router(analyze_email.router, prefix="/api/v1")
 app.include_router(outreach_email.router, prefix="/api/v1")
 app.include_router(save_contact.router, prefix="/api/v1")

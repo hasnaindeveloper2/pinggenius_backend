@@ -9,8 +9,8 @@ router = APIRouter(tags=["Scheduler"])
 class EmailJobStartRequest(BaseModel):
     user_id: str
     interval_minutes: int
-    
-    
+
+
 class EmailJobStopRequest(BaseModel):
     user_id: str
 
@@ -32,11 +32,13 @@ async def start_job(email_job: EmailJobStartRequest):
 
 
 @router.post("/stop-email-job")
-async def stop_job(user_id: EmailJobStopRequest):
+async def stop_job(payload: EmailJobStopRequest):
     """Stops the email checking job for a specific user."""
-    await jobs.update_one({"user_id": user_id}, {"$set": {"is_sync_running": False}})
-    await stop_user_scheduler(user_id)
-    return {"status": "stopped", "user_id": user_id}
+    await jobs.update_one(
+        {"user_id": payload.user_id}, {"$set": {"is_sync_running": False}}
+    )
+    await stop_user_scheduler(payload.user_id)
+    return {"status": "stopped", "user_id": payload.user_id}
 
 
 @router.get("/email-job-status")
