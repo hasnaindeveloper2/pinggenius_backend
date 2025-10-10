@@ -5,7 +5,10 @@ from utils.scheduler import scheduler
 
 app = FastAPI()
 
-origins = ["*"]
+origins = [
+    "https://pinggenius.vercel.app",
+    "http://localhost:3000",
+]
 
 app.add_middleware(
     CORSMiddleware,
@@ -54,6 +57,7 @@ from api.v1 import (
     gamail_scheduler,
     sequence_job_status,
 )
+
 app.include_router(analyze_email.router, prefix="/api/v1")
 app.include_router(outreach_email.router, prefix="/api/v1")
 app.include_router(save_contact.router, prefix="/api/v1")
