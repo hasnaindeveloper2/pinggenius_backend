@@ -5,10 +5,12 @@ from models.contact import get_contact_by_id
 from gmail_service import get_gmail_service, send_email_reply
 from utils.extract_subject import extract_subject
 from models.sequence_job import sequence_job
+from models.users import users
 from datetime import datetime
 from bson import ObjectId
 from utils.analytics_service import update_analytics
 from utils.scheduler import scheduler
+from utils.send_emails_via_smtp import send_email_smtp
 from utils.analytics_service import update_sequence_progress
 
 router = APIRouter(tags=["Sequence"])
@@ -23,7 +25,6 @@ class SequenceRequest(BaseModel):
 
 async def send_scheduled_email(contact_id: str, email_body: str, user_id: str):
     """Helper for scheduled jobs"""
-    service = await get_gmail_service(user_id)
     contact = await get_contact_by_id(contact_id)
     if not contact:
         return
@@ -36,8 +37,10 @@ async def send_scheduled_email(contact_id: str, email_body: str, user_id: str):
         _, body = email_body.split("\n", 1)
         email_body = body.strip()
 
-    send_email_reply(service, to_email, subject, email_body)
-    
+    # TODO: do this later
+    # send_email_reply(service, to_email, subject, email_body)
+    send_email_smtp(to_email, subject, email_body)
+
     # ✅ Update analytics
     await update_analytics(user_id, "autoReplied", 1)
     # ✅ Update sequence progress
@@ -53,7 +56,7 @@ async def send_scheduled_email(contact_id: str, email_body: str, user_id: str):
 @router.post("/start-sequence")
 async def start_sequence(data: SequenceRequest):
     try:
-        service = await get_gmail_service(data.user_id)
+        # service = await get_gmail_service(data.user_id)
         contact_id = ObjectId(data.contact_id)
         contact = await get_contact_by_id(contact_id)
 
@@ -70,8 +73,9 @@ async def start_sequence(data: SequenceRequest):
             _, body = data.email_body.split("\n", 1)
             data.email_body = body.strip()
 
-        # Send first email immediately
-        send_email_reply(service, to_email, subject, data.email_body)
+        # TODO: do this later
+        # send_email_reply(service, to_email, subject, email_body)
+        send_email_smtp(to_email, subject, data.email_body)
 
         # ✅ Update analytics
         await update_analytics(data.user_id, "autoReplied", 1)

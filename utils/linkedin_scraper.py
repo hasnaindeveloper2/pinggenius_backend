@@ -17,7 +17,7 @@ def extract_linkedin_username(url: str) -> str:
 
 def build_query(url: str) -> str:
     username = extract_linkedin_username(url)
-    return f"{username} site:linkedin.com/in/" if username else url
+    return f"site:linkedin.com/in/{username}" if username else f"site:{url}"
 
 
 def fetch_linkedin_data(linkedin_url: str):
