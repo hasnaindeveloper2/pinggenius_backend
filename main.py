@@ -23,23 +23,30 @@ app.add_middleware(
 def read_root():
     return {"message": "PingGenius Agent API is running 🚀"}
 
+    # Use lifespan context manager for startup/shutdown events
 
-@app.on_event("startup")
-async def monitoring_schedulers():
-    import asyncio
 
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+# @app.lifespan
+# async def lifespan(app: FastAPI):
+#     # Start scheduler monitoring on startup
+#     import asyncio
 
-    loop.create_task(monitor_schedulers())
+#     try:
+#         loop = asyncio.get_running_loop()
+#     except RuntimeError:
+#         loop = asyncio.new_event_loop()
+#         asyncio.set_event_loop(loop)
 
-    if not scheduler.running:
-        scheduler.start()
+#     loop.create_task(monitor_schedulers())
 
-    print("✅ Scheduler monitor started...")
+#     if not scheduler.running:
+#         scheduler.start()
+
+#     print("✅ Scheduler monitor started...")
+
+#     yield  # Yield control back to FastAPI
+
+    # Cleanup can be added here for shutdown if needed
 
 
 # -------- Routers --------
