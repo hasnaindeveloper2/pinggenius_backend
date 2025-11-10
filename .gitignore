@@ -12,4 +12,3 @@ wheels/
 credentials.json
 token.json
 vps_commands.txt
-pyproject.toml
